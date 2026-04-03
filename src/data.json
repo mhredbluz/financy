@@ -100,5 +100,35 @@
   "budget": {
     "month": "2026-04",
     "limit": 1200
-  }
+  },
+  "goals": [
+    {
+      "id": "goal-1",
+      "type": "savings",
+      "title": "Guardar R$ 500/mês",
+      "description": "Meta de economia mensal para reserva de emergência",
+      "targetAmount": 500,
+      "month": "2026-04",
+      "createdAt": "2026-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "goal-2",
+      "type": "category_limit",
+      "title": "Gastar no máximo R$ 300 em Alimentação",
+      "description": "Controlar gastos com comida fora de casa",
+      "targetAmount": 300,
+      "category": "Alimentação",
+      "month": "2026-04",
+      "createdAt": "2026-04-01T10:00:00.000Z"
+    },
+    {
+      "id": "goal-3",
+      "type": "monthly_target",
+      "title": "Receber R$ 1.200 de salário",
+      "description": "Meta de renda mensal",
+      "targetAmount": 1200,
+      "month": "2026-04",
+      "createdAt": "2026-04-01T10:00:00.000Z"
+    }
+  ]
 }

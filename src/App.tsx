@@ -6,9 +6,11 @@ import TodayCard from './components/TodayCard'
 import BudgetSummary from './components/BudgetSummary'
 import VisualReports from './components/VisualReports'
 import BudgetAlerts from './components/BudgetAlerts'
+import GoalProgress from './components/GoalProgress'
 import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import CategoryManager from './components/CategoryManager'
+import GoalManager from './components/GoalManager'
 import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
@@ -21,6 +23,7 @@ function App() {
   const [form, setForm] = useState({ type: 'expense' as TransactionType, date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '' })
   const [feedback, setFeedback] = useState<string | null>(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
+  const [showGoalManager, setShowGoalManager] = useState(false)
 
   const monthOptions = useMemo(() => {
     const months = [] as string[]
@@ -200,6 +203,13 @@ function App() {
         formatCurrency={formatCurrency}
       />
 
+      <GoalProgress
+        goals={JSON.parse(localStorage.getItem('financy-custom-goals') || '[]')}
+        transactions={transactions}
+        selectedMonth={selectedMonth}
+        formatCurrency={formatCurrency}
+      />
+
       {feedback && <p className="feedback">{feedback}</p>}
 
       <TransactionForm
@@ -216,6 +226,13 @@ function App() {
       <div className="category-manager-btn">
         <button onClick={() => setShowCategoryManager(true)} className="manage-categories-btn">
           🧠 Gerenciar Categorias Inteligentes
+        </button>
+        <button
+          onClick={() => setShowGoalManager(true)}
+          className="manage-categories-btn"
+          style={{ marginLeft: '0.5rem', background: 'var(--primary)' }}
+        >
+          🎯 Gerenciar Metas
         </button>
       </div>
       <div className="quick-input">
@@ -251,6 +268,13 @@ function App() {
 
       {showCategoryManager && (
         <CategoryManager onClose={() => setShowCategoryManager(false)} />
+      )}
+
+      {showGoalManager && (
+        <GoalManager
+          onClose={() => setShowGoalManager(false)}
+          selectedMonth={selectedMonth}
+        />
       )}
     </div>
   )
