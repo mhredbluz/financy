@@ -15,6 +15,7 @@ import GoalManager from './components/GoalManager'
 import RecurringManager from './components/RecurringManager'
 import RecurringAlerts from './components/RecurringAlerts'
 import BackupManager from './components/BackupManager'
+import NotificationsPanel from './components/NotificationsPanel'
 import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction, generateRecurringTransactions } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
@@ -270,6 +271,12 @@ function App() {
       />
 
       <GamificationPanel
+        transactions={transactions}
+        selectedMonth={selectedMonth}
+        budgetLimit={budgetLimit}
+      />
+
+      <NotificationsPanel
         transactions={transactions}
         selectedMonth={selectedMonth}
         budgetLimit={budgetLimit}
