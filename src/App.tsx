@@ -7,6 +7,7 @@ import BudgetSummary from './components/BudgetSummary'
 import VisualReports from './components/VisualReports'
 import BudgetAlerts from './components/BudgetAlerts'
 import GoalProgress from './components/GoalProgress'
+import GamificationPanel from './components/GamificationPanel'
 import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import CategoryManager from './components/CategoryManager'
@@ -266,6 +267,12 @@ function App() {
         transactions={transactions}
         selectedMonth={selectedMonth}
         formatCurrency={formatCurrency}
+      />
+
+      <GamificationPanel
+        transactions={transactions}
+        selectedMonth={selectedMonth}
+        budgetLimit={budgetLimit}
       />
 
       {feedback && <p className="feedback">{feedback}</p>}
