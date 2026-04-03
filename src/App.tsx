@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState, useEffect } from 'react'
 import './App.css'
 import type { FormEvent } from 'react'
-import type { Transaction, TransactionType, RecurringTransaction } from './types'
+import type { Transaction, TransactionType, RecurringTransaction, Goal } from './types'
 import TodayCard from './components/TodayCard'
 import BudgetSummary from './components/BudgetSummary'
 import VisualReports from './components/VisualReports'
@@ -17,18 +17,20 @@ import RecurringAlerts from './components/RecurringAlerts'
 import BackupManager from './components/BackupManager'
 import NotificationsPanel from './components/NotificationsPanel'
 import IntegrationsPanel from './components/IntegrationsPanel'
+import { AppProvider } from './context/AppContext'
 import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction, generateRecurringTransactions } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
 function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadAppData().transactions)
+  const [goals, setGoals] = useState<Goal[]>(() => loadAppData().goals ?? [])
   const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7))
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
   const [calendarView, setCalendarView] = useState<'day'|'week'|'month'|'year'>('day')
   const [budgetLimit, setBudgetLimit] = useState<number>(() => loadAppData().budget?.limit ?? 1200)
   const [editingTxId, setEditingTxId] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [form, setForm] = useState({ type: 'expense' as TransactionType, date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '' })
+  const [form, setForm] = useState({ type: 'expense' as TransactionType, date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '', allocatedToGoal: undefined as string | undefined })
   const [feedback, setFeedback] = useState<string | null>(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
   const [showGoalManager, setShowGoalManager] = useState(false)
@@ -36,6 +38,9 @@ function App() {
   const [showBackupManager, setShowBackupManager] = useState(false)
   const [showRecurringAlerts, setShowRecurringAlerts] = useState(false)
   const [showIntegrations, setShowIntegrations] = useState(false)
+  const [activeTab, setActiveTab] = useState<'summary' | 'reports' | 'goals' | 'gamification' | 'notifications'>('summary')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'transactions' | 'settings'>('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const getNextDueDate = (lastDate: Date, recurrenceType: string): Date => {
     const nextDate = new Date(lastDate)
@@ -157,12 +162,29 @@ function App() {
         amount: form.amount,
         category: form.category,
         note: form.note,
+        allocatedToGoal: form.allocatedToGoal,
       }
 
       updateTransaction(updatedTx)
+      
+      // Update goal's allocated amount if goal is set
+      if (form.allocatedToGoal) {
+        const updatedGoals = goals.map((goal) => {
+          if (goal.id === form.allocatedToGoal) {
+            const allocatedAmount = (goal.allocatedAmount ?? 0) + form.amount
+            return { ...goal, allocatedAmount }
+          }
+          return goal
+        })
+        setGoals(updatedGoals)
+        const appData = loadAppData()
+        appData.goals = updatedGoals
+        saveAppData(appData)
+      }
+
       setEditingTxId(null)
       setTransactions(loadAppData().transactions)
-      setForm({ type: 'expense', date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '' })
+      setForm({ type: 'expense', date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '', allocatedToGoal: undefined })
       return
     }
 
@@ -173,10 +195,26 @@ function App() {
       amount: form.amount,
       category: form.category,
       note: form.note,
+      allocatedToGoal: form.allocatedToGoal,
     }
 
     addTransaction(tx)
     setTransactions(loadAppData().transactions)
+
+    // Update goal's allocated amount if goal is set
+    if (form.allocatedToGoal) {
+      const updatedGoals = goals.map((goal) => {
+        if (goal.id === form.allocatedToGoal) {
+          const allocatedAmount = (goal.allocatedAmount ?? 0) + form.amount
+          return { ...goal, allocatedAmount }
+        }
+        return goal
+      })
+      setGoals(updatedGoals)
+      const appData = loadAppData()
+      appData.goals = updatedGoals
+      saveAppData(appData)
+    }
 
     const { orcamentoHoje, gastoHoje } = dashboardSummary
     const novoGastoHoje = form.type === 'expense' && form.date === todayISO ? gastoHoje + form.amount : gastoHoje
@@ -190,7 +228,7 @@ function App() {
 
     setTimeout(() => setFeedback(null), 3000)
 
-    setForm({ ...form, amount: 0, category: '', note: '' })
+    setForm({ ...form, amount: 0, category: '', note: '', allocatedToGoal: undefined })
   }
 
   const handleDelete = (id: string) => {
@@ -202,7 +240,7 @@ function App() {
     const tx = transactions.find((item) => item.id === id)
     if (!tx) return
     setEditingTxId(id)
-    setForm({ type: tx.type, date: tx.date, amount: tx.amount, category: tx.category, note: tx.note ?? '' })
+    setForm({ type: tx.type, date: tx.date, amount: tx.amount, category: tx.category, note: tx.note ?? '', allocatedToGoal: tx.allocatedToGoal })
   }
 
   const updateBudget = () => {
@@ -215,190 +253,198 @@ function App() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
+  const appContextValue = { transactions, selectedMonth, budgetLimit }
+
   return (
+    <AppProvider value={appContextValue}>
     <div className="App">
-      <header>
-        <h1>Financy</h1>
-        <p>Orçamento mensal + controle diário de gastos</p>
-      </header>
-
-      <TodayCard
-        summary={dashboardSummary}
-        selectedDate={selectedDate}
-        calendarView={calendarView}
-        onDateChange={setSelectedDate}
-        onViewChange={setCalendarView}
-      />
-
-      <BudgetAlerts
-        transactions={transactions}
-        selectedMonth={selectedMonth}
-        budgetLimit={budgetLimit}
-      />
-
-      <section className={`app-status ${status}`}>
-        <div>
-          <strong>💰 Saldo</strong>
-          <p>{formatCurrency(dashboardSummary.saldo)}</p>
+      <nav className="sidebar" data-open={sidebarOpen}>
+        <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
+          {sidebarOpen ? '✕' : '☰'}
+        </button>
+        <div className="sidebar-content">
+          <button className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentView('dashboard'); setSidebarOpen(false); }}>
+            <span className="icon">🏠</span>
+            {sidebarOpen && <span className="label">Dashboard</span>}
+          </button>
+          <button className={`nav-btn ${currentView === 'transactions' ? 'active' : ''}`} onClick={() => { setCurrentView('transactions'); setSidebarOpen(false); }}>
+            <span className="icon">💳</span>
+            {sidebarOpen && <span className="label">Transações</span>}
+          </button>
+          <button className={`nav-btn ${currentView === 'settings' ? 'active' : ''}`} onClick={() => { setCurrentView('settings'); setSidebarOpen(false); }}>
+            <span className="icon">⚙️</span>
+            {sidebarOpen && <span className="label">Configurações</span>}
+          </button>
         </div>
-        <div>
-          <strong>📅 Dias restantes</strong>
-          <p>{dashboardSummary.diasRestantes}</p>
+      </nav>
+
+      <main className="main-content">
+        <header>
+          <h1>Financy</h1>
+          <p>Orçamento mensal + controle diário de gastos</p>
+        </header>
+
+        {currentView === 'dashboard' && (
+          <div className="main-grid">
+          <div className="left-column">
+            <TodayCard
+              summary={dashboardSummary}
+              selectedDate={selectedDate}
+              calendarView={calendarView}
+              onDateChange={setSelectedDate}
+              onViewChange={setCalendarView}
+            />
+
+            <BudgetAlerts />
+
+            <section className={`app-status ${status}`}>
+              <div>
+                <strong>💰 Saldo</strong>
+                <p>{formatCurrency(dashboardSummary.saldo)}</p>
+              </div>
+              <div>
+                <strong>📅 Dias restantes</strong>
+                <p>{dashboardSummary.diasRestantes}</p>
+              </div>
+              <div>
+                <strong>🔥 Hoje pode gastar</strong>
+                <p>{formatCurrency(Math.max(0, dashboardSummary.orcamentoDiario))}</p>
+              </div>
+              <div>
+                <strong>💸 Gasto hoje</strong>
+                <p className={statusHoje}>{formatCurrency(dashboardSummary.gastoHoje)}</p>
+              </div>
+              <div>
+                <strong>⚖️ Diferença hoje</strong>
+                <p className={statusHoje}>{formatCurrency(dashboardSummary.diferencaHoje)}</p>
+              </div>
+            </section>
+          </div>
+
+          <div className="right-column">
+            <div className="tabs">
+              <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>📊 Resumo</button>
+              <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>📈 Relatórios</button>
+              <button className={activeTab === 'goals' ? 'active' : ''} onClick={() => setActiveTab('goals')}>🎯 Metas</button>
+              <button className={activeTab === 'gamification' ? 'active' : ''} onClick={() => setActiveTab('gamification')}>🏆 Gamificação</button>
+              <button className={activeTab === 'notifications' ? 'active' : ''} onClick={() => setActiveTab('notifications')}>🔔 Notificações</button>
+            </div>
+
+            {activeTab === 'summary' && (
+              <BudgetSummary
+                month={selectedMonth}
+                monthOptions={monthOptions}
+                selectedMonth={selectedMonth}
+                onMonthChange={(next) => {
+                  setSelectedMonth(next)
+                  const stored = loadAppData().budget
+                  if (stored?.month === next) setBudgetLimit(stored.limit)
+                }}
+                onSaveBudget={updateBudget}
+                summary={dashboardSummary}
+              />
+            )}
+
+            {activeTab === 'reports' && (
+              <VisualReports formatCurrency={formatCurrency} />
+            )}
+
+            {activeTab === 'goals' && (
+              <GoalProgress
+                goals={JSON.parse(localStorage.getItem('financy-custom-goals') || '[]')}
+                transactions={transactions}
+                selectedMonth={selectedMonth}
+                formatCurrency={formatCurrency}
+              />
+            )}
+
+            {activeTab === 'gamification' && (
+              <GamificationPanel />
+            )}
+
+            {activeTab === 'notifications' && (
+              <NotificationsPanel />
+            )}
+          </div>
         </div>
-        <div>
-          <strong>🔥 Hoje pode gastar</strong>
-          <p>{formatCurrency(Math.max(0, dashboardSummary.orcamentoDiario))}</p>
-        </div>        <div>
-          <strong>💸 Gasto hoje</strong>
-          <p className={statusHoje}>{formatCurrency(dashboardSummary.gastoHoje)}</p>
+      )}
+
+      {currentView === 'transactions' && (
+        <div className="transactions-view">
+          <TransactionForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleSubmit}
+            isEditing={!!editingTxId}
+            onCancelEdit={() => {
+              setEditingTxId(null)
+              setForm({ type: 'expense', date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '' })
+            }}
+          />
+
+          <div className="quick-input">
+            <button type="button" onClick={handleQuickExpense}>
+              + Gastei agora
+            </button>
+          </div>
+
+          <TransactionList
+            transactions={filteredTransactions}
+            selectedTransactions={selectedTransactions}
+            categoryFilter={categoryFilter}
+            onCategoryChange={setCategoryFilter}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            formatCurrency={formatCurrency}
+          />
+
+          <section className="list-card">
+            <h2>Agregação por categoria (despesas)</h2>
+            <ul>
+              {categorySummary.length === 0 ? (
+                <li>Nenhuma despesa cadastrada no mês.</li>
+              ) : (
+                categorySummary.map((item) => (
+                  <li key={item.categoria}>
+                    <strong>{item.categoria}</strong>: {formatCurrency(item.total)}
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
         </div>
-        <div>
-          <strong>⚖️ Diferença hoje</strong>
-          <p className={statusHoje}>{formatCurrency(dashboardSummary.diferencaHoje)}</p>
-        </div>      </section>
+      )}
 
-      <BudgetSummary
-        month={selectedMonth}
-        monthOptions={monthOptions}
-        selectedMonth={selectedMonth}
-        onMonthChange={(next) => {
-          setSelectedMonth(next)
-          const stored = loadAppData().budget
-          if (stored?.month === next) setBudgetLimit(stored.limit)
-        }}
-        budgetLimit={budgetLimit}
-        onBudgetLimitChange={setBudgetLimit}
-        onSaveBudget={updateBudget}
-        summary={dashboardSummary}
-      />
-
-      <VisualReports
-        transactions={transactions}
-        selectedMonth={selectedMonth}
-        formatCurrency={formatCurrency}
-      />
-
-      <GoalProgress
-        goals={JSON.parse(localStorage.getItem('financy-custom-goals') || '[]')}
-        transactions={transactions}
-        selectedMonth={selectedMonth}
-        formatCurrency={formatCurrency}
-      />
-
-      <GamificationPanel
-        transactions={transactions}
-        selectedMonth={selectedMonth}
-        budgetLimit={budgetLimit}
-      />
-
-      <NotificationsPanel
-        transactions={transactions}
-        selectedMonth={selectedMonth}
-        budgetLimit={budgetLimit}
-      />
+      {currentView === 'settings' && (
+        <div className="settings-view">
+          <h2>Configurações e Gerenciamento</h2>
+          <div className="settings-grid">
+            <button onClick={() => setShowCategoryManager(true)} className="setting-btn">
+              🧠 Gerenciar Categorias Inteligentes
+            </button>
+            <button onClick={() => setShowGoalManager(true)} className="setting-btn">
+              🎯 Gerenciar Metas
+            </button>
+            <button onClick={() => setShowRecurringManager(true)} className="setting-btn">
+              🔄 Gerenciar Recorrências
+            </button>
+            <button onClick={() => setShowIntegrations(true)} className="setting-btn">
+              🔌 Configurar Integrações
+            </button>
+            <button onClick={() => setShowBackupManager(true)} className="setting-btn">
+              💾 Backup/Exportação
+            </button>
+            <button onClick={() => setShowRecurringAlerts(true)} className="setting-btn">
+              🔔 Ver Alertas
+              {pendingAlertsCount > 0 && (
+                <span className="badge">{pendingAlertsCount}</span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {feedback && <p className="feedback">{feedback}</p>}
-
-      <TransactionForm
-        form={form}
-        setForm={setForm}
-        onSubmit={handleSubmit}
-        isEditing={!!editingTxId}
-        onCancelEdit={() => {
-          setEditingTxId(null)
-          setForm({ type: 'expense', date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '' })
-        }}
-      />
-
-      <div className="category-manager-btn">
-        <button onClick={() => setShowCategoryManager(true)} className="manage-categories-btn">
-          🧠 Gerenciar Categorias Inteligentes
-        </button>
-        <button
-          onClick={() => setShowGoalManager(true)}
-          className="manage-categories-btn"
-          style={{ marginLeft: '0.5rem', background: 'var(--primary)' }}
-        >
-          🎯 Gerenciar Metas
-        </button>
-        <button
-          onClick={() => setShowRecurringManager(true)}
-          className="manage-categories-btn"
-          style={{ marginLeft: '0.5rem', background: 'var(--success)' }}
-        >
-          🔄 Gerenciar Recorrências
-        </button>
-        <button
-          onClick={() => setShowIntegrations(true)}
-          className="manage-categories-btn"
-          style={{ marginLeft: '0.5rem', background: 'var(--info)' }}
-        >
-          🔌 Configurar Integrações
-        </button>
-        <button
-          onClick={() => setShowBackupManager(true)}
-          className="manage-categories-btn"
-          style={{ marginLeft: '0.5rem', background: 'var(--primary)' }}
-        >
-          💾 Backup/Exportação
-        </button>
-        <button
-          onClick={() => setShowRecurringAlerts(true)}
-          className="manage-categories-btn"
-          style={{ marginLeft: '0.5rem', background: 'var(--warning)', position: 'relative' }}
-        >
-          🔔 Ver Alertas
-          {pendingAlertsCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '-8px',
-              right: '-8px',
-              background: 'var(--danger)',
-              color: 'white',
-              borderRadius: '50%',
-              width: '20px',
-              height: '20px',
-              fontSize: '0.7rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold'
-            }}>
-              {pendingAlertsCount}
-            </span>
-          )}
-        </button>
-      </div>
-      <div className="quick-input">
-        <button type="button" onClick={handleQuickExpense}>
-          + Gastei agora
-        </button>
-      </div>
-
-      <TransactionList
-        transactions={filteredTransactions}
-        selectedTransactions={selectedTransactions}
-        categoryFilter={categoryFilter}
-        onCategoryChange={setCategoryFilter}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        formatCurrency={formatCurrency}
-      />
-
-      <section className="list-card">
-        <h2>Agregação por categoria (despesas)</h2>
-        <ul>
-          {categorySummary.length === 0 ? (
-            <li>Nenhuma despesa cadastrada no mês.</li>
-          ) : (
-            categorySummary.map((item) => (
-              <li key={item.categoria}>
-                <strong>{item.categoria}</strong>: {formatCurrency(item.total)}
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
 
       {showCategoryManager && (
         <CategoryManager onClose={() => setShowCategoryManager(false)} />
@@ -429,7 +475,9 @@ function App() {
       {showRecurringAlerts && (
         <RecurringAlerts onClose={() => setShowRecurringAlerts(false)} />
       )}
+      </main>
     </div>
+    </AppProvider>
   )
 }
 

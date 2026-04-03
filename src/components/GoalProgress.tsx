@@ -10,39 +10,29 @@ interface GoalProgressProps {
 export default function GoalProgress({ goals, transactions, selectedMonth, formatCurrency }: GoalProgressProps) {
   const currentMonthGoals = goals.filter(goal => goal.month === selectedMonth)
 
-  if (currentMonthGoals.length === 0) {
-    return null
-  }
-
   const calculateGoalProgress = (goal: Goal) => {
     const monthTransactions = transactions.filter(tx => tx.date.startsWith(selectedMonth))
 
     switch (goal.type) {
       case 'savings': {
-        // Meta de economia: diferença entre receitas e despesas
-        const totalIncome = monthTransactions
-          .filter(tx => tx.type === 'income')
-          .reduce((sum, tx) => sum + tx.amount, 0)
-
-        const totalExpenses = monthTransactions
-          .filter(tx => tx.type === 'expense')
-          .reduce((sum, tx) => sum + tx.amount, 0)
-
-        const currentSavings = totalIncome - totalExpenses
-        const progress = Math.min((currentSavings / goal.targetAmount) * 100, 100)
+        // Meta de economia: usa apenas alocação explícita
+        const allocated = goal.allocatedAmount || 0
+        const currentSavings = Math.min(allocated, goal.targetAmount)
+        const progress = (currentSavings / goal.targetAmount) * 100
         const remaining = Math.max(goal.targetAmount - currentSavings, 0)
 
         return {
-          current: currentSavings,
-          progress: Math.max(0, progress),
+          current: allocated,
+          progress: Math.min(progress, 100),
           remaining,
-          status: currentSavings >= goal.targetAmount ? 'completed' : currentSavings >= goal.targetAmount * 0.8 ? 'near' : 'active'
+          status: allocated >= goal.targetAmount ? 'completed' : allocated >= goal.targetAmount * 0.8 ? 'near' : 'active',
+          requiresAllocation: true
         }
       }
 
       case 'category_limit': {
         // Meta de limite por categoria: não gastar mais que o limite
-        if (!goal.category) return { current: 0, progress: 0, remaining: goal.targetAmount, status: 'active' }
+        if (!goal.category) return { current: 0, progress: 0, remaining: goal.targetAmount, status: 'active', requiresAllocation: false }
 
         const categoryExpenses = monthTransactions
           .filter(tx => tx.type === 'expense' && tx.category === goal.category)
@@ -55,37 +45,28 @@ export default function GoalProgress({ goals, transactions, selectedMonth, forma
           current: categoryExpenses,
           progress: Math.min(progress, 100),
           remaining,
-          status: categoryExpenses > goal.targetAmount ? 'exceeded' : categoryExpenses >= goal.targetAmount * 0.9 ? 'warning' : 'active'
+          status: categoryExpenses > goal.targetAmount ? 'exceeded' : categoryExpenses >= goal.targetAmount * 0.9 ? 'warning' : 'active',
+          requiresAllocation: false
         }
       }
 
       case 'monthly_target': {
-        // Meta mensal: atingir um valor específico (pode ser receita ou despesa)
-        const relevantTransactions = monthTransactions.filter(tx =>
-          goal.category ? tx.category === goal.category : true
-        )
-
-        const totalAmount = relevantTransactions.reduce((sum, tx) => {
-          if (goal.title.toLowerCase().includes('receita') || goal.title.toLowerCase().includes('ganho')) {
-            return tx.type === 'income' ? sum + tx.amount : sum
-          } else {
-            return tx.type === 'expense' ? sum + tx.amount : sum
-          }
-        }, 0)
-
-        const progress = Math.min((totalAmount / goal.targetAmount) * 100, 100)
-        const remaining = Math.max(goal.targetAmount - totalAmount, 0)
+        // Meta mensal: requer alocação explícita para ser mais significativa
+        const allocated = goal.allocatedAmount || 0
+        const progress = (allocated / goal.targetAmount) * 100
+        const remaining = Math.max(goal.targetAmount - allocated, 0)
 
         return {
-          current: totalAmount,
-          progress: Math.max(0, progress),
+          current: allocated,
+          progress: Math.min(progress, 100),
           remaining,
-          status: totalAmount >= goal.targetAmount ? 'completed' : totalAmount >= goal.targetAmount * 0.8 ? 'near' : 'active'
+          status: allocated >= goal.targetAmount ? 'completed' : allocated >= goal.targetAmount * 0.8 ? 'near' : 'active',
+          requiresAllocation: true
         }
       }
 
       default:
-        return { current: 0, progress: 0, remaining: goal.targetAmount, status: 'active' }
+        return { current: 0, progress: 0, remaining: goal.targetAmount, status: 'active', requiresAllocation: false }
     }
   }
 
@@ -188,6 +169,24 @@ export default function GoalProgress({ goals, transactions, selectedMonth, forma
                 </div>
               </div>
 
+              {/* Allocation Warning */}
+              {progress.requiresAllocation && progress.current === 0 && (
+                <div style={{
+                  background: 'rgba(241, 158, 11, 0.15)',
+                  border: '1px solid var(--warning)',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.85rem',
+                  color: 'var(--warning)'
+                }}>
+                  <strong>⚠️ Requer alocação</strong>
+                  <p style={{ margin: '0.25rem 0 0' }}>
+                    Esta meta só progride quando você expl­icitamente aloca dinheiro a ela. 
+                  </p>
+                </div>
+              )}
+
               {/* Status Details */}
               <div style={{
                 display: 'grid',
@@ -245,12 +244,36 @@ export default function GoalProgress({ goals, transactions, selectedMonth, forma
 
       {currentMonthGoals.length === 0 && (
         <div style={{
-          textAlign: 'center',
+          background: 'var(--surface)',
+          borderRadius: '12px',
           padding: '2rem',
-          color: 'var(--text-weak)'
+          textAlign: 'center',
+          border: '2px dashed var(--border)',
+          marginTop: '1rem'
         }}>
-          <p>🎯 Nenhuma meta definida para este mês.</p>
-          <p style={{ fontSize: '0.9rem' }}>Clique em "Gerenciar Metas" para criar seus objetivos!</p>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎯</div>
+          <p style={{ 
+            margin: '0.5rem 0', 
+            color: 'var(--text-strong)',
+            fontSize: '1.1rem',
+            fontWeight: 'bold'
+          }}>
+            Nenhuma meta definida para este mês
+          </p>
+          <p style={{ 
+            fontSize: '0.9rem',
+            color: 'var(--text-medium)',
+            margin: '0.5rem 0 1rem'
+          }}>
+            Crie metas de economia, limites por categoria ou objetivos mensais!
+          </p>
+          <p style={{
+            fontSize: '0.85rem',
+            color: 'var(--text-weak)',
+            fontStyle: 'italic'
+          }}>
+            Acesse "Configurações" → "Gerenciar Metas" para começar
+          </p>
         </div>
       )}
     </section>

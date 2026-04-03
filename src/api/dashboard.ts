@@ -1,5 +1,6 @@
-import type { Transaction } from '../types'
+﻿import type { Transaction } from '../types'
 import { suggestCategory } from '../utils/categorySuggester'
+import { calcSaldoDisponivel, calcLimiteDiarioBase, calcLimiteHoje } from '../domain/budget'
 
 export interface DashboardSummary {
   totalReceita: number
@@ -11,6 +12,7 @@ export interface DashboardSummary {
   gastoHoje: number
   orcamentoHoje: number
   diferencaHoje: number
+  diferencaOntem: number
   statusHoje: 'OK' | 'ESTOURO'
 }
 
@@ -36,8 +38,9 @@ export function getDashboardSummary(transactions: Transaction[], budgetLimit: nu
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const diasRestantes = Math.max(0, lastDay - now.getDate())
 
-  const restante = budgetLimit - totalDespesas
-  const orcamentoDiario = diasRestantes > 0 ? restante / diasRestantes : 0
+  const saldoDisponivel = calcSaldoDisponivel(saldo, 0.3)
+  const limiteDiarioBase = calcLimiteDiarioBase(saldoDisponivel, diasRestantes)
+  const orcamentoDiario = limiteDiarioBase
 
   let status: DashboardSummary['status'] = 'OK'
 
@@ -47,13 +50,22 @@ export function getDashboardSummary(transactions: Transaction[], budgetLimit: nu
     status = 'ALERTA'
   }
 
-  // Novos campos diários
-  const today = new Date().toISOString().slice(0, 10)
+  // Daily fields based on selected date (now)
+  const todayISO = now.toISOString().slice(0, 10)
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayISO = yesterday.toISOString().slice(0, 10)
+
   const gastoHoje = transactions
-    .filter((tx) => tx.date === today && tx.type === 'expense')
+    .filter((tx) => tx.date === todayISO && tx.type === 'expense')
     .reduce((sum, tx) => sum + tx.amount, 0)
 
-  const orcamentoHoje = saldo <= 0 ? 0 : orcamentoDiario
+  const gastoOntem = transactions
+    .filter((tx) => tx.date === yesterdayISO && tx.type === 'expense')
+    .reduce((sum, tx) => sum + tx.amount, 0)
+
+  const diferencaOntem = limiteDiarioBase - gastoOntem
+  const orcamentoHoje = saldo <= 0 ? 0 : calcLimiteHoje(limiteDiarioBase, diferencaOntem)
   const diferencaHoje = orcamentoHoje - gastoHoje
   const statusHoje: DashboardSummary['statusHoje'] = gastoHoje <= orcamentoHoje ? 'OK' : 'ESTOURO'
 
@@ -67,6 +79,7 @@ export function getDashboardSummary(transactions: Transaction[], budgetLimit: nu
     gastoHoje,
     orcamentoHoje,
     diferencaHoje,
+    diferencaOntem,
     statusHoje,
   }
 }
@@ -74,7 +87,7 @@ export function getDashboardSummary(transactions: Transaction[], budgetLimit: nu
 export function getCategorySummary(transactions: Transaction[], month: string): CategorySummaryItem[] {
   const monthTransactions = transactions.filter((tx) => tx.date.startsWith(month) && tx.type === 'expense')
 
-  // Recategorizar automaticamente transações sem categoria ou com categoria genérica
+  // Recategorize transactions with empty or generic category
   const recategorizedTransactions = monthTransactions.map((tx) => {
     if (!tx.category || tx.category.trim() === '' || tx.category.toLowerCase() === 'outros') {
       const suggestedCategory = suggestCategory(tx.note || '', tx.type)
@@ -92,5 +105,5 @@ export function getCategorySummary(transactions: Transaction[], month: string): 
 
   return Object.entries(byCategory)
     .map(([categoria, total]) => ({ categoria, total }))
-    .sort((a, b) => b.total - a.total) // Ordenar por valor total decrescente
+    .sort((a, b) => b.total - a.total)
 }

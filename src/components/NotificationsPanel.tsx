@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Transaction } from '../types'
-
-interface NotificationsPanelProps {
-  transactions: Transaction[]
-  selectedMonth: string
-  budgetLimit: number
-}
+import { useAppContext } from '../context/AppContext'
 
 const formatDate = (ts: string) => new Date(ts).toLocaleDateString('pt-BR')
 
@@ -22,7 +16,8 @@ function getDaysAgoFromDate(date: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-export default function NotificationsPanel({ transactions, selectedMonth, budgetLimit }: NotificationsPanelProps) {
+export default function NotificationsPanel() {
+  const { transactions, selectedMonth, budgetLimit } = useAppContext()
   const [notifications, setNotifications] = useState<string[]>([])
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default')
 

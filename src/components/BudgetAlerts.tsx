@@ -1,12 +1,7 @@
-import type { Transaction } from '../types'
+import { useAppContext } from '../context/AppContext'
 
-interface BudgetAlertsProps {
-  transactions: Transaction[]
-  selectedMonth: string
-  budgetLimit: number
-}
-
-export default function BudgetAlerts({ transactions, selectedMonth, budgetLimit }: BudgetAlertsProps) {
+export default function BudgetAlerts() {
+  const { transactions, selectedMonth, budgetLimit } = useAppContext()
   const currentMonthTxs = transactions.filter(tx => tx.date.startsWith(selectedMonth))
   const expenses = currentMonthTxs.filter(tx => tx.type === 'expense')
   const totalExpenses = expenses.reduce((sum, tx) => sum + tx.amount, 0)

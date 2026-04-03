@@ -1,14 +1,9 @@
-import type { Transaction } from '../types'
-
-interface GamificationPanelProps {
-  transactions: Transaction[]
-  selectedMonth: string
-  budgetLimit: number
-}
+import { useAppContext } from '../context/AppContext'
 
 const dayKey = (date: Date) => date.toISOString().slice(0, 10)
 
-export default function GamificationPanel({ transactions, selectedMonth, budgetLimit }: GamificationPanelProps) {
+export default function GamificationPanel() {
+  const { transactions, selectedMonth, budgetLimit } = useAppContext()
   const allTransactions = transactions
 
   const totalTransactions = allTransactions.length

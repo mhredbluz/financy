@@ -1,4 +1,4 @@
-import type { DashboardSummary } from '../api/dashboard'
+﻿import type { DashboardSummary } from '../api/dashboard'
 
 type CalendarView = 'day' | 'week' | 'month' | 'year'
 
@@ -45,10 +45,11 @@ export default function TodayCard({ summary, selectedDate, calendarView, onDateC
     switch (calendarView) {
       case 'day':
         return formatDate(selectedDate)
-      case 'week':
+      case 'week': {
         const start = moveN(selectedDate, 0, 'day')
         const end = moveN(selectedDate, 6, 'day')
         return `${formatDate(start)} - ${formatDate(end)}`
+      }
       case 'month':
         return toMonthLabel(selectedDate)
       case 'year':
@@ -86,6 +87,9 @@ export default function TodayCard({ summary, selectedDate, calendarView, onDateC
         <div>
           <strong>Limite diário</strong>
           <p>{formatCurrency(summary.orcamentoHoje)}</p>
+          <small style={{ color: 'var(--text-weak)' }}>
+            Carry-over: {formatCurrency(summary.diferencaOntem)}
+          </small>
         </div>
         <div>
           <strong>Gastou</strong>

@@ -8,6 +8,7 @@ export interface Transaction {
   category: string
   note?: string
   recurringId?: string // ID da recorrência que gerou esta transação
+  allocatedToGoal?: string // ID da meta recebendo alocação desta transação
 }
 
 export interface Budget {
@@ -43,18 +44,8 @@ export interface Goal {
   month: string // YYYY-MM
   createdAt: string
   deadline?: string // YYYY-MM-DD
-}
-
-export interface Goal {
-  id: string
-  type: GoalType
-  title: string
-  description?: string
-  targetAmount: number
-  category?: string // Para metas por categoria
-  month: string // YYYY-MM
-  createdAt: string
-  deadline?: string // YYYY-MM-DD
+  allocatedAmount?: number // Quanto foi realmente alocado/destinado
+  linkedTransactions?: string[] // IDs das transações vinculadas
 }
 
 export interface BackupSnapshot {

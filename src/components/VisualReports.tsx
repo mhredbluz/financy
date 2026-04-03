@@ -1,9 +1,7 @@
 ﻿import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import type { Transaction } from '../types'
+import { useAppContext } from '../context/AppContext'
 
 interface VisualReportsProps {
-  transactions: Transaction[]
-  selectedMonth: string
   formatCurrency: (value: number) => string
 }
 
@@ -17,7 +15,8 @@ const addMonths = (month: string, offset: number) => {
   return monthId(date)
 }
 
-export default function VisualReports({ transactions, selectedMonth, formatCurrency }: VisualReportsProps) {
+export default function VisualReports({ formatCurrency }: VisualReportsProps) {
+  const { transactions, selectedMonth } = useAppContext()
   const monthlyMap: Record<string, { income: number; expense: number; balance: number }> = {}
 
   transactions.forEach((tx) => {
