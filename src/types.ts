@@ -57,6 +57,13 @@ export interface Goal {
   deadline?: string // YYYY-MM-DD
 }
 
+export interface BackupSnapshot {
+  id: string
+  timestamp: string // ISO
+  label?: string
+  data: AppData
+}
+
 export interface AppData {
   transactions: Transaction[]
   budget?: Budget

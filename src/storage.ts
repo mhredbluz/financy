@@ -1,6 +1,7 @@
-import type { AppData, Transaction, Goal, RecurringTransaction } from './types'
+import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot } from './types'
 
 const STORAGE_KEY = 'financy-app-data'
+const BACKUP_HISTORY_KEY = 'financy-backup-history'
 
 const defaultData: AppData = { transactions: [] }
 
@@ -20,7 +21,25 @@ export function loadAppData(): AppData {
   }
 }
 
-export function saveAppData(data: AppData) {
+function appendBackup(data: AppData, label?: string) {
+  const historyRaw = localStorage.getItem(BACKUP_HISTORY_KEY)
+  const history: BackupSnapshot[] = historyRaw ? JSON.parse(historyRaw) : []
+  const backup: BackupSnapshot = {
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    label,
+    data
+  }
+  const maxHistory = 20
+  const trimmed = [...history, backup].slice(-maxHistory)
+  localStorage.setItem(BACKUP_HISTORY_KEY, JSON.stringify(trimmed))
+}
+
+export function saveAppData(data: AppData, createBackup = true, label?: string) {
+  if (createBackup) {
+    const currentData = loadAppData()
+    appendBackup(currentData, label)
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
@@ -73,6 +92,51 @@ export function deleteGoal(goalId: string) {
 export function getGoalsForMonth(month: string): Goal[] {
   const data = loadAppData()
   return data.goals?.filter((goal) => goal.month === month) || []
+}
+
+export function getBackupHistory(): BackupSnapshot[] {
+  const raw = localStorage.getItem(BACKUP_HISTORY_KEY)
+  return raw ? JSON.parse(raw) : []
+}
+
+export function restoreBackup(backupId: string): boolean {
+  const history = getBackupHistory()
+  const backup = history.find((item) => item.id === backupId)
+  if (!backup) return false
+  saveAppData(backup.data, false)
+  return true
+}
+
+export function clearBackupHistory() {
+  localStorage.removeItem(BACKUP_HISTORY_KEY)
+}
+
+export function importAppData(raw: string): { success: boolean; message: string } {
+  try {
+    const parsed = JSON.parse(raw) as AppData
+    if (!parsed || !Array.isArray(parsed.transactions)) {
+      return { success: false, message: 'Formato inválido. Esperado objeto AppData com transactions[].' }
+    }
+    saveAppData(parsed)
+    return { success: true, message: 'Dados importados com sucesso.' }
+  } catch {
+    return { success: false, message: 'Erro ao parsear JSON. Verifique o conteúdo.' }
+  }
+}
+
+export function prepareTransactionsCSV(data: AppData): string {
+  const headers = ['id', 'date', 'type', 'amount', 'category', 'note', 'recurringId']
+  const rows = data.transactions.map((tx) => [
+    tx.id,
+    tx.date,
+    tx.type,
+    tx.amount.toFixed(2),
+    tx.category,
+    tx.note || '',
+    tx.recurringId || ''
+  ])
+  const escaped = rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+  return [headers.join(','), ...escaped].join('\n')
 }
 
 // Funções para gerenciar recorrências

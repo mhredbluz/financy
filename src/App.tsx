@@ -11,7 +11,9 @@ import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import CategoryManager from './components/CategoryManager'
 import GoalManager from './components/GoalManager'
+import RecurringManager from './components/RecurringManager'
 import RecurringAlerts from './components/RecurringAlerts'
+import BackupManager from './components/BackupManager'
 import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction, generateRecurringTransactions } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
@@ -26,6 +28,7 @@ function App() {
   const [showCategoryManager, setShowCategoryManager] = useState(false)
   const [showGoalManager, setShowGoalManager] = useState(false)
   const [showRecurringManager, setShowRecurringManager] = useState(false)
+  const [showBackupManager, setShowBackupManager] = useState(false)
   const [showRecurringAlerts, setShowRecurringAlerts] = useState(false)
 
   // Contar alertas de recorrências pendentes
@@ -297,6 +300,13 @@ function App() {
           🔄 Gerenciar Recorrências
         </button>
         <button
+          onClick={() => setShowBackupManager(true)}
+          className="manage-categories-btn"
+          style={{ marginLeft: '0.5rem', background: 'var(--primary)' }}
+        >
+          💾 Backup/Exportação
+        </button>
+        <button
           onClick={() => setShowRecurringAlerts(true)}
           className="manage-categories-btn"
           style={{ marginLeft: '0.5rem', background: 'var(--warning)', position: 'relative' }}
@@ -367,6 +377,13 @@ function App() {
 
       {showRecurringManager && (
         <RecurringManager onClose={() => setShowRecurringManager(false)} />
+      )}
+
+      {showBackupManager && (
+        <BackupManager
+          onClose={() => setShowBackupManager(false)}
+          formatCurrency={formatCurrency}
+        />
       )}
 
       {showRecurringAlerts && (
