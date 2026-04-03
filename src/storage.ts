@@ -4,10 +4,16 @@ const STORAGE_KEY = 'financy-app-data'
 
 const defaultData: AppData = { transactions: [] }
 
+import testData from './data.json'
+
 export function loadAppData(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return defaultData
+    if (!raw) {
+      // Carregar dados de teste se não houver dados salvos
+      saveAppData(testData as AppData)
+      return testData as AppData
+    }
     return JSON.parse(raw) as AppData
   } catch {
     return defaultData

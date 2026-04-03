@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import type { Transaction, TransactionType } from './types'
 import TodayCard from './components/TodayCard'
 import BudgetSummary from './components/BudgetSummary'
+import VisualReports from './components/VisualReports'
 import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import CategoryManager from './components/CategoryManager'
@@ -184,6 +185,12 @@ function App() {
         onBudgetLimitChange={setBudgetLimit}
         onSaveBudget={updateBudget}
         summary={dashboardSummary}
+      />
+
+      <VisualReports
+        transactions={transactions}
+        selectedMonth={selectedMonth}
+        formatCurrency={formatCurrency}
       />
 
       {feedback && <p className="feedback">{feedback}</p>}

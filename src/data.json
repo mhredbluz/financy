@@ -1,0 +1,96 @@
+{
+  "transactions": [
+    {
+      "id": "1",
+      "date": "2026-04-01",
+      "type": "expense",
+      "amount": 50,
+      "category": "Alimentação",
+      "note": "Almoço"
+    },
+    {
+      "id": "2",
+      "date": "2026-04-02",
+      "type": "expense",
+      "amount": 30,
+      "category": "Transporte",
+      "note": "Ônibus"
+    },
+    {
+      "id": "3",
+      "date": "2026-04-03",
+      "type": "expense",
+      "amount": 100,
+      "category": "Alimentação",
+      "note": "Supermercado"
+    },
+    {
+      "id": "4",
+      "date": "2026-04-05",
+      "type": "income",
+      "amount": 1200,
+      "category": "Salário",
+      "note": "Salário mensal"
+    },
+    {
+      "id": "5",
+      "date": "2026-04-10",
+      "type": "expense",
+      "amount": 200,
+      "category": "Lazer",
+      "note": "Cinema"
+    },
+    {
+      "id": "6",
+      "date": "2026-04-15",
+      "type": "expense",
+      "amount": 80,
+      "category": "Alimentação",
+      "note": "Jantar"
+    },
+    {
+      "id": "7",
+      "date": "2026-03-01",
+      "type": "expense",
+      "amount": 40,
+      "category": "Alimentação",
+      "note": "Café"
+    },
+    {
+      "id": "8",
+      "date": "2026-03-15",
+      "type": "income",
+      "amount": 1200,
+      "category": "Salário",
+      "note": "Salário março"
+    },
+    {
+      "id": "9",
+      "date": "2026-03-20",
+      "type": "expense",
+      "amount": 150,
+      "category": "Transporte",
+      "note": "Combustível"
+    },
+    {
+      "id": "10",
+      "date": "2026-02-01",
+      "type": "income",
+      "amount": 1100,
+      "category": "Salário",
+      "note": "Salário fevereiro"
+    },
+    {
+      "id": "11",
+      "date": "2026-02-10",
+      "type": "expense",
+      "amount": 60,
+      "category": "Alimentação",
+      "note": "Lanche"
+    }
+  ],
+  "budget": {
+    "month": "2026-04",
+    "limit": 1200
+  }
+}
