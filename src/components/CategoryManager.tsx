@@ -15,10 +15,18 @@ export default function CategoryManager({ onClose }: CategoryManagerProps) {
   const [newKeywords, setNewKeywords] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
-  // Salvar categorias personalizadas no localStorage
+  // Atalho de teclado para fechar modal
   useEffect(() => {
-    localStorage.setItem('financy-custom-categories', JSON.stringify(customCategories))
-  }, [customCategories])
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const addCategory = () => {
     if (!newCategory.trim() || !newKeywords.trim()) return
@@ -71,7 +79,12 @@ export default function CategoryManager({ onClose }: CategoryManagerProps) {
     <div className="category-manager-overlay">
       <div className="category-manager">
         <div className="category-manager-header">
-          <h3>Gerenciar Categorias Inteligentes</h3>
+          <div>
+            <h3>Gerenciar Categorias Inteligentes</h3>
+            <small style={{ fontSize: '0.8rem', color: 'var(--text-weak)' }}>
+              💡 Pressione Esc para fechar
+            </small>
+          </div>
           <button onClick={onClose} className="close-btn">✕</button>
         </div>
 

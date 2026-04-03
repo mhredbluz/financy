@@ -6,7 +6,7 @@
       "type": "expense",
       "amount": 50,
       "category": "Alimentação",
-      "note": "Almoço"
+      "note": "Almoço no restaurante"
     },
     {
       "id": "2",
@@ -14,7 +14,7 @@
       "type": "expense",
       "amount": 30,
       "category": "Transporte",
-      "note": "Ônibus"
+      "note": "Ônibus para o trabalho"
     },
     {
       "id": "3",
@@ -22,7 +22,7 @@
       "type": "expense",
       "amount": 100,
       "category": "Alimentação",
-      "note": "Supermercado"
+      "note": "Compras no supermercado Extra"
     },
     {
       "id": "4",
@@ -30,7 +30,7 @@
       "type": "income",
       "amount": 1200,
       "category": "Salário",
-      "note": "Salário mensal"
+      "note": "Salário mensal da empresa"
     },
     {
       "id": "5",
@@ -38,7 +38,7 @@
       "type": "expense",
       "amount": 200,
       "category": "Lazer",
-      "note": "Cinema"
+      "note": "Cinema com amigos"
     },
     {
       "id": "6",
@@ -46,18 +46,58 @@
       "type": "expense",
       "amount": 80,
       "category": "Alimentação",
-      "note": "Jantar"
+      "note": "Jantar romântico"
     },
     {
       "id": "7",
+      "date": "2026-04-18",
+      "type": "expense",
+      "amount": 25,
+      "category": "Transporte",
+      "note": "Uber para reunião"
+    },
+    {
+      "id": "8",
+      "date": "2026-04-20",
+      "type": "expense",
+      "amount": 150,
+      "category": "Saúde",
+      "note": "Consulta médica"
+    },
+    {
+      "id": "9",
+      "date": "2026-04-22",
+      "type": "expense",
+      "amount": 45,
+      "category": "Alimentação",
+      "note": "Café da manhã"
+    },
+    {
+      "id": "10",
+      "date": "2026-04-25",
+      "type": "expense",
+      "amount": 300,
+      "category": "Moradia",
+      "note": "Conta de luz"
+    },
+    {
+      "id": "11",
+      "date": "2026-04-28",
+      "type": "expense",
+      "amount": 120,
+      "category": "Lazer",
+      "note": "Show de música"
+    },
+    {
+      "id": "12",
       "date": "2026-03-01",
       "type": "expense",
       "amount": 40,
       "category": "Alimentação",
-      "note": "Café"
+      "note": "Café com colegas"
     },
     {
-      "id": "8",
+      "id": "13",
       "date": "2026-03-15",
       "type": "income",
       "amount": 1200,
@@ -65,15 +105,23 @@
       "note": "Salário março"
     },
     {
-      "id": "9",
+      "id": "14",
       "date": "2026-03-20",
       "type": "expense",
       "amount": 150,
       "category": "Transporte",
-      "note": "Combustível"
+      "note": "Combustível do carro"
     },
     {
-      "id": "10",
+      "id": "15",
+      "date": "2026-03-25",
+      "type": "expense",
+      "amount": 200,
+      "category": "Lazer",
+      "note": "Teatro"
+    },
+    {
+      "id": "16",
       "date": "2026-02-01",
       "type": "income",
       "amount": 1100,
@@ -81,12 +129,44 @@
       "note": "Salário fevereiro"
     },
     {
-      "id": "11",
+      "id": "17",
       "date": "2026-02-10",
       "type": "expense",
       "amount": 60,
       "category": "Alimentação",
-      "note": "Lanche"
+      "note": "Lanche rápido"
+    },
+    {
+      "id": "18",
+      "date": "2026-02-15",
+      "type": "expense",
+      "amount": 80,
+      "category": "Saúde",
+      "note": "Farmácia"
+    },
+    {
+      "id": "19",
+      "date": "2026-01-01",
+      "type": "income",
+      "amount": 1000,
+      "category": "Salário",
+      "note": "Salário janeiro"
+    },
+    {
+      "id": "20",
+      "date": "2026-01-15",
+      "type": "expense",
+      "amount": 250,
+      "category": "Moradia",
+      "note": "Conta de água"
+    },
+    {
+      "id": "21",
+      "date": "2026-01-20",
+      "type": "expense",
+      "amount": 90,
+      "category": "Lazer",
+      "note": "Academia mensal"
     }
   ],
   "budget": {

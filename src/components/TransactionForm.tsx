@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import type { FormEvent } from 'react'
 import type { TransactionType } from '../types'
-import { suggestCategory, getCategorySuggestions } from '../utils/categorySuggester'
+import { getCategorySuggestions } from '../utils/categorySuggester'
 
 interface TransactionFormProps {
   form: { type: TransactionType; date: string; amount: number; category: string; note: string }
@@ -22,15 +22,24 @@ export default function TransactionForm({ form, setForm, onSubmit, isEditing, on
     return []
   }, [form.note, form.type])
 
-  // Sugestão automática de categoria baseada na nota
+  // Atalhos de teclado
   useEffect(() => {
-    if (form.note && form.note.length > 2 && !isEditing && !form.category) {
-      const suggested = suggestCategory(form.note, form.type)
-      if (suggested) {
-        setForm(prev => ({ ...prev, category: suggested }))
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        // Ctrl/Cmd + Enter para submeter o formulário
+        event.preventDefault()
+        const form = document.querySelector('form') as HTMLFormElement
+        if (form) form.requestSubmit()
+      } else if (event.key === 'Escape' && isEditing) {
+        // Esc para cancelar edição
+        event.preventDefault()
+        onCancelEdit()
       }
     }
-  }, [form.note, form.type, isEditing, form.category, setForm])
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isEditing, onCancelEdit])
 
   const handleNoteChange = (value: string) => {
     setForm((old) => ({ ...old, note: value }))
@@ -116,6 +125,9 @@ export default function TransactionForm({ form, setForm, onSubmit, isEditing, on
               Cancelar edição
             </button>
           )}
+          <small style={{ marginLeft: 'auto', color: 'var(--text-weak)', fontSize: '0.8rem' }}>
+            💡 Ctrl+Enter para salvar • Esc para cancelar
+          </small>
         </div>
       </form>
     </section>
