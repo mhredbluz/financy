@@ -4,100 +4,60 @@
       "id": "1",
       "date": "2026-04-01",
       "type": "expense",
-      "amount": 50,
+      "amount": 150,
       "category": "Alimentação",
-      "note": "Almoço no restaurante"
+      "note": "Compras semanais"
     },
     {
       "id": "2",
-      "date": "2026-04-02",
+      "date": "2026-04-05",
       "type": "expense",
-      "amount": 30,
+      "amount": 200,
       "category": "Transporte",
-      "note": "Ônibus para o trabalho"
+      "note": "Combustível"
     },
     {
       "id": "3",
-      "date": "2026-04-03",
-      "type": "expense",
-      "amount": 100,
-      "category": "Alimentação",
-      "note": "Compras no supermercado Extra"
-    },
-    {
-      "id": "4",
-      "date": "2026-04-05",
-      "type": "income",
-      "amount": 1200,
-      "category": "Salário",
-      "note": "Salário mensal da empresa"
-    },
-    {
-      "id": "5",
       "date": "2026-04-10",
-      "type": "expense",
-      "amount": 200,
-      "category": "Lazer",
-      "note": "Cinema com amigos"
-    },
-    {
-      "id": "6",
-      "date": "2026-04-15",
-      "type": "expense",
-      "amount": 80,
-      "category": "Alimentação",
-      "note": "Jantar romântico"
-    },
-    {
-      "id": "7",
-      "date": "2026-04-18",
-      "type": "expense",
-      "amount": 25,
-      "category": "Transporte",
-      "note": "Uber para reunião"
-    },
-    {
-      "id": "8",
-      "date": "2026-04-20",
-      "type": "expense",
-      "amount": 150,
-      "category": "Saúde",
-      "note": "Consulta médica"
-    },
-    {
-      "id": "9",
-      "date": "2026-04-22",
-      "type": "expense",
-      "amount": 45,
-      "category": "Alimentação",
-      "note": "Café da manhã"
-    },
-    {
-      "id": "10",
-      "date": "2026-04-25",
       "type": "expense",
       "amount": 300,
       "category": "Moradia",
       "note": "Conta de luz"
     },
     {
-      "id": "11",
-      "date": "2026-04-28",
+      "id": "4",
+      "date": "2026-04-15",
       "type": "expense",
-      "amount": 120,
+      "amount": 250,
       "category": "Lazer",
-      "note": "Show de música"
+      "note": "Viagem fim de semana"
     },
     {
-      "id": "12",
+      "id": "5",
+      "date": "2026-04-20",
+      "type": "income",
+      "amount": 1200,
+      "category": "Salário",
+      "note": "Salário mensal"
+    },
+    {
+      "id": "6",
+      "date": "2026-04-25",
+      "type": "expense",
+      "amount": 100,
+      "category": "Saúde",
+      "note": "Consulta médica"
+    },
+    {
+      "id": "7",
       "date": "2026-03-01",
       "type": "expense",
-      "amount": 40,
+      "amount": 120,
       "category": "Alimentação",
-      "note": "Café com colegas"
+      "note": "Compras mês passado"
     },
     {
-      "id": "13",
+      "id": "8",
       "date": "2026-03-15",
       "type": "income",
       "amount": 1200,
@@ -105,23 +65,23 @@
       "note": "Salário março"
     },
     {
-      "id": "14",
+      "id": "9",
       "date": "2026-03-20",
       "type": "expense",
-      "amount": 150,
+      "amount": 180,
       "category": "Transporte",
-      "note": "Combustível do carro"
+      "note": "Combustível março"
     },
     {
-      "id": "15",
+      "id": "10",
       "date": "2026-03-25",
       "type": "expense",
-      "amount": 200,
-      "category": "Lazer",
-      "note": "Teatro"
+      "amount": 250,
+      "category": "Moradia",
+      "note": "Conta de água"
     },
     {
-      "id": "16",
+      "id": "11",
       "date": "2026-02-01",
       "type": "income",
       "amount": 1100,
@@ -129,44 +89,12 @@
       "note": "Salário fevereiro"
     },
     {
-      "id": "17",
+      "id": "12",
       "date": "2026-02-10",
       "type": "expense",
-      "amount": 60,
-      "category": "Alimentação",
-      "note": "Lanche rápido"
-    },
-    {
-      "id": "18",
-      "date": "2026-02-15",
-      "type": "expense",
-      "amount": 80,
-      "category": "Saúde",
-      "note": "Farmácia"
-    },
-    {
-      "id": "19",
-      "date": "2026-01-01",
-      "type": "income",
-      "amount": 1000,
-      "category": "Salário",
-      "note": "Salário janeiro"
-    },
-    {
-      "id": "20",
-      "date": "2026-01-15",
-      "type": "expense",
-      "amount": 250,
-      "category": "Moradia",
-      "note": "Conta de água"
-    },
-    {
-      "id": "21",
-      "date": "2026-01-20",
-      "type": "expense",
       "amount": 90,
-      "category": "Lazer",
-      "note": "Academia mensal"
+      "category": "Alimentação",
+      "note": "Compras fevereiro"
     }
   ],
   "budget": {

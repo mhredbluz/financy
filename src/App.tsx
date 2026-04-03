@@ -5,6 +5,7 @@ import type { Transaction, TransactionType } from './types'
 import TodayCard from './components/TodayCard'
 import BudgetSummary from './components/BudgetSummary'
 import VisualReports from './components/VisualReports'
+import BudgetAlerts from './components/BudgetAlerts'
 import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import CategoryManager from './components/CategoryManager'
@@ -150,6 +151,12 @@ function App() {
       </header>
 
       <TodayCard summary={dashboardSummary} />
+
+      <BudgetAlerts
+        transactions={transactions}
+        selectedMonth={selectedMonth}
+        budgetLimit={budgetLimit}
+      />
 
       <section className={`app-status ${status}`}>
         <div>

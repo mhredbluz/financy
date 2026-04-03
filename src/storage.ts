@@ -1,4 +1,4 @@
-import type { AppData, Transaction } from './types'
+import type { AppData, Transaction, Goal } from './types'
 
 const STORAGE_KEY = 'financy-app-data'
 
@@ -46,4 +46,31 @@ export function setBudget(month: string, limit: number) {
   const data = loadAppData()
   data.budget = { month, limit }
   saveAppData(data)
+}
+
+// Funções para gerenciar metas
+export function addGoal(goal: Goal) {
+  const data = loadAppData()
+  if (!data.goals) data.goals = []
+  data.goals.push(goal)
+  saveAppData(data)
+}
+
+export function updateGoal(updated: Goal) {
+  const data = loadAppData()
+  if (!data.goals) return
+  data.goals = data.goals.map((goal) => (goal.id === updated.id ? updated : goal))
+  saveAppData(data)
+}
+
+export function deleteGoal(goalId: string) {
+  const data = loadAppData()
+  if (!data.goals) return
+  data.goals = data.goals.filter((goal) => goal.id !== goalId)
+  saveAppData(data)
+}
+
+export function getGoalsForMonth(month: string): Goal[] {
+  const data = loadAppData()
+  return data.goals?.filter((goal) => goal.month === month) || []
 }

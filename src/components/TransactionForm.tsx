@@ -13,6 +13,52 @@ interface TransactionFormProps {
 
 export default function TransactionForm({ form, setForm, onSubmit, isEditing, onCancelEdit }: TransactionFormProps) {
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+
+  // Validação de data - não permitir datas futuras para despesas
+  const validateDate = (date: string, type: TransactionType): string | null => {
+    if (type === 'expense') {
+      const selectedDate = new Date(date)
+      const today = new Date()
+      today.setHours(23, 59, 59, 999) // Fim do dia atual
+
+      if (selectedDate > today) {
+        return 'Não é possível registrar despesas com data futura'
+      }
+    }
+    return null
+  }
+
+  // Validação geral do formulário
+  const validateForm = (): boolean => {
+    const errors: string[] = []
+
+    if (!form.amount || form.amount <= 0) {
+      errors.push('Valor deve ser maior que zero')
+    }
+
+    if (!form.category.trim()) {
+      errors.push('Categoria é obrigatória')
+    }
+
+    const dateError = validateDate(form.date, form.type)
+    if (dateError) {
+      errors.push(dateError)
+    }
+
+    setValidationErrors(errors)
+    return errors.length === 0
+  }
+
+  // Handler customizado para submit com validação
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (validateForm()) {
+      onSubmit(event)
+      setValidationErrors([])
+    }
+  }
 
   // Calcular sugestões usando useMemo
   const suggestions = useMemo(() => {
@@ -54,7 +100,26 @@ export default function TransactionForm({ form, setForm, onSubmit, isEditing, on
   return (
     <section className="form-card">
       <h2>{isEditing ? 'Editar transação' : 'Nova transação'}</h2>
-      <form onSubmit={onSubmit}>
+
+      {/* Exibir erros de validação */}
+      {validationErrors.length > 0 && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '8px',
+          padding: '0.75rem',
+          marginBottom: '1rem'
+        }}>
+          <strong style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>⚠️ Erros encontrados:</strong>
+          <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem', color: 'var(--danger)' }}>
+            {validationErrors.map((error, index) => (
+              <li key={index} style={{ fontSize: '0.85rem' }}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
         <label>
           Tipo
           <select
