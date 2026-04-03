@@ -1,7 +1,7 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useMemo, useState, useEffect } from 'react'
 import './App.css'
 import type { FormEvent } from 'react'
-import type { Transaction, TransactionType } from './types'
+import type { Transaction, TransactionType, RecurringTransaction } from './types'
 import TodayCard from './components/TodayCard'
 import BudgetSummary from './components/BudgetSummary'
 import VisualReports from './components/VisualReports'
@@ -11,7 +11,8 @@ import TransactionForm from './components/TransactionForm'
 import TransactionList from './components/TransactionList'
 import CategoryManager from './components/CategoryManager'
 import GoalManager from './components/GoalManager'
-import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction } from './storage'
+import RecurringAlerts from './components/RecurringAlerts'
+import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction, generateRecurringTransactions } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
 function App() {
@@ -24,6 +25,60 @@ function App() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
   const [showGoalManager, setShowGoalManager] = useState(false)
+  const [showRecurringManager, setShowRecurringManager] = useState(false)
+  const [showRecurringAlerts, setShowRecurringAlerts] = useState(false)
+
+  // Contar alertas de recorrências pendentes
+  const pendingAlertsCount = useMemo(() => {
+    const recurringTransactions: RecurringTransaction[] = JSON.parse(
+      localStorage.getItem('financy-recurring-transactions') || '[]'
+    )
+    const dismissedAlerts: string[] = JSON.parse(
+      localStorage.getItem('financy-dismissed-recurring-alerts') || '[]'
+    )
+    const dismissedSet = new Set(dismissedAlerts)
+
+    const today = new Date()
+    const nextWeek = new Date(today)
+    nextWeek.setDate(today.getDate() + 7)
+
+    return recurringTransactions.filter(recurring => {
+      if (!recurring.isActive) return false
+      if (dismissedSet.has(recurring.id)) return false
+
+      const lastGenerated = recurring.lastGenerated ? new Date(recurring.lastGenerated) : new Date(recurring.startDate)
+      const nextDue = getNextDueDate(lastGenerated, recurring.recurrenceType)
+
+      return nextDue <= nextWeek && nextDue >= today
+    }).length
+  }, [transactions]) // Recalcular quando transactions mudam
+
+  const getNextDueDate = (lastDate: Date, recurrenceType: string): Date => {
+    const nextDate = new Date(lastDate)
+
+    switch (recurrenceType) {
+      case 'daily':
+        nextDate.setDate(nextDate.getDate() + 1)
+        break
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + 7)
+        break
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + 1)
+        break
+      case 'yearly':
+        nextDate.setFullYear(nextDate.getFullYear() + 1)
+        break
+    }
+
+    return nextDate
+  }
+
+  // Gerar transações recorrentes automaticamente ao carregar o app
+  useEffect(() => {
+    generateRecurringTransactions()
+    setTransactions(loadAppData().transactions)
+  }, [])
 
   const monthOptions = useMemo(() => {
     const months = [] as string[]
@@ -234,6 +289,39 @@ function App() {
         >
           🎯 Gerenciar Metas
         </button>
+        <button
+          onClick={() => setShowRecurringManager(true)}
+          className="manage-categories-btn"
+          style={{ marginLeft: '0.5rem', background: 'var(--success)' }}
+        >
+          🔄 Gerenciar Recorrências
+        </button>
+        <button
+          onClick={() => setShowRecurringAlerts(true)}
+          className="manage-categories-btn"
+          style={{ marginLeft: '0.5rem', background: 'var(--warning)', position: 'relative' }}
+        >
+          🔔 Ver Alertas
+          {pendingAlertsCount > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              background: 'var(--danger)',
+              color: 'white',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              fontSize: '0.7rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold'
+            }}>
+              {pendingAlertsCount}
+            </span>
+          )}
+        </button>
       </div>
       <div className="quick-input">
         <button type="button" onClick={handleQuickExpense}>
@@ -275,6 +363,14 @@ function App() {
           onClose={() => setShowGoalManager(false)}
           selectedMonth={selectedMonth}
         />
+      )}
+
+      {showRecurringManager && (
+        <RecurringManager onClose={() => setShowRecurringManager(false)} />
+      )}
+
+      {showRecurringAlerts && (
+        <RecurringAlerts onClose={() => setShowRecurringAlerts(false)} />
       )}
     </div>
   )

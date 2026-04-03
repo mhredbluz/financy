@@ -7,6 +7,7 @@ export interface Transaction {
   amount: number
   category: string
   note?: string
+  recurringId?: string // ID da recorrência que gerou esta transação
 }
 
 export interface Budget {
@@ -14,7 +15,35 @@ export interface Budget {
   limit: number
 }
 
+export type RecurrenceType = 'daily' | 'weekly' | 'monthly' | 'yearly'
+
+export interface RecurringTransaction {
+  id: string
+  type: TransactionType
+  amount: number
+  category: string
+  note?: string
+  recurrenceType: RecurrenceType
+  startDate: string // YYYY-MM-DD
+  endDate?: string // YYYY-MM-DD (opcional)
+  lastGenerated?: string // YYYY-MM-DD
+  isActive: boolean
+  createdAt: string
+}
+
 export type GoalType = 'savings' | 'category_limit' | 'monthly_target'
+
+export interface Goal {
+  id: string
+  type: GoalType
+  title: string
+  description?: string
+  targetAmount: number
+  category?: string // Para metas por categoria
+  month: string // YYYY-MM
+  createdAt: string
+  deadline?: string // YYYY-MM-DD
+}
 
 export interface Goal {
   id: string
@@ -32,4 +61,5 @@ export interface AppData {
   transactions: Transaction[]
   budget?: Budget
   goals?: Goal[]
+  recurringTransactions?: RecurringTransaction[]
 }
