@@ -1,4 +1,4 @@
-import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot } from './types'
+import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot, IntegrationSettings } from './types'
 
 const STORAGE_KEY = 'financy-app-data'
 const BACKUP_HISTORY_KEY = 'financy-backup-history'
@@ -92,6 +92,22 @@ export function deleteGoal(goalId: string) {
 export function getGoalsForMonth(month: string): Goal[] {
   const data = loadAppData()
   return data.goals?.filter((goal) => goal.month === month) || []
+}
+
+export function getIntegrationSettings() {
+  const data = loadAppData()
+  return data.integrations || {
+    googleCalendarEmail: '',
+    whatsappNumber: '',
+    whatsappApiUrl: '',
+    whatsappApiToken: '',
+  }
+}
+
+export function setIntegrationSettings(settings: Partial<IntegrationSettings>) {
+  const data = loadAppData()
+  data.integrations = { ...(data.integrations || {}), ...settings }
+  saveAppData(data, false)
 }
 
 export function getBackupHistory(): BackupSnapshot[] {

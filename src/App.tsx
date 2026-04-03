@@ -16,12 +16,15 @@ import RecurringManager from './components/RecurringManager'
 import RecurringAlerts from './components/RecurringAlerts'
 import BackupManager from './components/BackupManager'
 import NotificationsPanel from './components/NotificationsPanel'
+import IntegrationsPanel from './components/IntegrationsPanel'
 import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction, generateRecurringTransactions } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
 function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadAppData().transactions)
   const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7))
+  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [calendarView, setCalendarView] = useState<'day'|'week'|'month'|'year'>('day')
   const [budgetLimit, setBudgetLimit] = useState<number>(() => loadAppData().budget?.limit ?? 1200)
   const [editingTxId, setEditingTxId] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -32,6 +35,28 @@ function App() {
   const [showRecurringManager, setShowRecurringManager] = useState(false)
   const [showBackupManager, setShowBackupManager] = useState(false)
   const [showRecurringAlerts, setShowRecurringAlerts] = useState(false)
+  const [showIntegrations, setShowIntegrations] = useState(false)
+
+  const getNextDueDate = (lastDate: Date, recurrenceType: string): Date => {
+    const nextDate = new Date(lastDate)
+
+    switch (recurrenceType) {
+      case 'daily':
+        nextDate.setDate(nextDate.getDate() + 1)
+        break
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + 7)
+        break
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + 1)
+        break
+      case 'yearly':
+        nextDate.setFullYear(nextDate.getFullYear() + 1)
+        break
+    }
+
+    return nextDate
+  }
 
   // Contar alertas de recorrências pendentes
   const pendingAlertsCount = useMemo(() => {
@@ -58,26 +83,6 @@ function App() {
     }).length
   }, [transactions]) // Recalcular quando transactions mudam
 
-  const getNextDueDate = (lastDate: Date, recurrenceType: string): Date => {
-    const nextDate = new Date(lastDate)
-
-    switch (recurrenceType) {
-      case 'daily':
-        nextDate.setDate(nextDate.getDate() + 1)
-        break
-      case 'weekly':
-        nextDate.setDate(nextDate.getDate() + 7)
-        break
-      case 'monthly':
-        nextDate.setMonth(nextDate.getMonth() + 1)
-        break
-      case 'yearly':
-        nextDate.setFullYear(nextDate.getFullYear() + 1)
-        break
-    }
-
-    return nextDate
-  }
 
   // Gerar transações recorrentes automaticamente ao carregar o app
   useEffect(() => {
@@ -101,6 +106,11 @@ function App() {
     [transactions, selectedMonth],
   )
 
+  useEffect(() => {
+    const newMonth = selectedDate.slice(0, 7)
+    if (selectedMonth !== newMonth) setSelectedMonth(newMonth)
+  }, [selectedDate, selectedMonth])
+
   const filteredTransactions = useMemo(
     () =>
       categoryFilter === 'all'
@@ -111,11 +121,10 @@ function App() {
 
   const dashboardSummary: DashboardSummary = useMemo(
     () => {
-      const today = new Date()
-      const monthRef = selectedMonth === today.toISOString().slice(0, 7) ? today : new Date(`${selectedMonth}-01`)
-      return getDashboardSummary(selectedTransactions, budgetLimit, monthRef)
+      const now = new Date(selectedDate)
+      return getDashboardSummary(selectedTransactions, budgetLimit, now)
     },
-    [selectedTransactions, budgetLimit, selectedMonth],
+    [selectedTransactions, budgetLimit, selectedDate],
   )
 
   const categorySummary: CategorySummaryItem[] = useMemo(
@@ -213,7 +222,13 @@ function App() {
         <p>Orçamento mensal + controle diário de gastos</p>
       </header>
 
-      <TodayCard summary={dashboardSummary} />
+      <TodayCard
+        summary={dashboardSummary}
+        selectedDate={selectedDate}
+        calendarView={calendarView}
+        onDateChange={setSelectedDate}
+        onViewChange={setCalendarView}
+      />
 
       <BudgetAlerts
         transactions={transactions}
@@ -314,6 +329,13 @@ function App() {
           🔄 Gerenciar Recorrências
         </button>
         <button
+          onClick={() => setShowIntegrations(true)}
+          className="manage-categories-btn"
+          style={{ marginLeft: '0.5rem', background: 'var(--info)' }}
+        >
+          🔌 Configurar Integrações
+        </button>
+        <button
           onClick={() => setShowBackupManager(true)}
           className="manage-categories-btn"
           style={{ marginLeft: '0.5rem', background: 'var(--primary)' }}
@@ -398,6 +420,10 @@ function App() {
           onClose={() => setShowBackupManager(false)}
           formatCurrency={formatCurrency}
         />
+      )}
+
+      {showIntegrations && (
+        <IntegrationsPanel onClose={() => setShowIntegrations(false)} />
       )}
 
       {showRecurringAlerts && (

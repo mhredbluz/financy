@@ -41,8 +41,6 @@ export default function VisualReports({ transactions, selectedMonth, formatCurre
     balance: monthlyMap[m].balance,
   }))
 
-  const last12Months = sortedMonths.slice(-12)
-
   const selectedData = monthlyMap[selectedMonth] || { income: 0, expense: 0, balance: 0 }
 
   const sameMonthLastYear = addMonths(selectedMonth, -12)

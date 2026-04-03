@@ -64,9 +64,17 @@ export interface BackupSnapshot {
   data: AppData
 }
 
+export interface IntegrationSettings {
+  googleCalendarEmail?: string
+  whatsappNumber?: string
+  whatsappApiUrl?: string
+  whatsappApiToken?: string
+}
+
 export interface AppData {
   transactions: Transaction[]
   budget?: Budget
   goals?: Goal[]
   recurringTransactions?: RecurringTransaction[]
+  integrations?: IntegrationSettings
 }
