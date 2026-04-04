@@ -1,4 +1,4 @@
-﻿import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+﻿import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { useAppContext } from '../context/AppContext'
 
 interface VisualReportsProps {
@@ -42,13 +42,6 @@ export default function VisualReports({ formatCurrency }: VisualReportsProps) {
 
   const selectedData = monthlyMap[selectedMonth] || { income: 0, expense: 0, balance: 0 }
 
-  const sameMonthLastYear = addMonths(selectedMonth, -12)
-  const sameLastYearData = monthlyMap[sameMonthLastYear] || { income: 0, expense: 0, balance: 0 }
-
-  const expenseSeasonChange = sameLastYearData.expense > 0
-    ? ((selectedData.expense - sameLastYearData.expense) / sameLastYearData.expense) * 100
-    : selectedData.expense > 0 ? 100 : 0
-
   // Projeção simples: média dos últimos 6 meses
   const last6 = sortedMonths.slice(-6)
   const historical = last6.map((m) => monthlyMap[m])
@@ -69,34 +62,6 @@ export default function VisualReports({ formatCurrency }: VisualReportsProps) {
 
   const forecastData = [...monthlyData.slice(-6), ...forecastMonths]
 
-  // Alertas de tendência por categoria
-  const categoryMonth: Record<string, Record<string, number>> = {}
-  transactions
-    .filter((tx) => tx.type === 'expense')
-    .forEach((tx) => {
-      const month = tx.date.slice(0, 7)
-      if (!categoryMonth[tx.category]) categoryMonth[tx.category] = {}
-      categoryMonth[tx.category][month] = (categoryMonth[tx.category][month] || 0) + tx.amount
-    })
-
-  const trendMessages: string[] = []
-  const trendMonthsRecent = [addMonths(selectedMonth, -2), addMonths(selectedMonth, -1), selectedMonth]
-  const trendMonthsPrevious = [addMonths(selectedMonth, -5), addMonths(selectedMonth, -4), addMonths(selectedMonth, -3)]
-
-  Object.entries(categoryMonth).forEach(([category, monthValues]) => {
-    const recent = trendMonthsRecent.reduce((sum, m) => sum + (monthValues[m] || 0), 0)
-    const previous = trendMonthsPrevious.reduce((sum, m) => sum + (monthValues[m] || 0), 0)
-
-    if (previous > 0) {
-      const diff = ((recent - previous) / previous) * 100
-      if (diff >= 20) {
-        trendMessages.push(`📈 Seus gastos com ${category} aumentaram ${diff.toFixed(0)}% nos últimos 3 meses.`)
-      } else if (diff <= -20) {
-        trendMessages.push(`📉 Seus gastos com ${category} diminuíram ${Math.abs(diff).toFixed(0)}% nos últimos 3 meses.`)
-      }
-    }
-  })
-
   const categoryData = transactions
     .filter((tx) => tx.type === 'expense' && tx.date.startsWith(selectedMonth))
     .reduce((acc, tx) => {
@@ -116,16 +81,6 @@ export default function VisualReports({ formatCurrency }: VisualReportsProps) {
   const expenses = currentMonthTxs.filter((tx) => tx.type === 'expense')
   const incomes = currentMonthTxs.filter((tx) => tx.type === 'income')
 
-  const topExpense = expenses.reduce((max, tx) => (tx.amount > max.amount ? tx : max), expenses[0] || { amount: 0 })
-  const topCategory = expenses.reduce((acc, tx) => {
-    acc[tx.category] = (acc[tx.category] || 0) + tx.amount
-    return acc
-  }, {} as Record<string, number>)
-
-  const mostUsedCategory = Object.entries(topCategory).reduce((max, [cat, amount]) =>
-    amount > (topCategory[max[0]] || 0) ? [cat, amount] : max,
-  ['', 0])
-
   const prevMonthDate = parseMonth(`${selectedMonth}-01`)
   prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
   const prevMonthStr = monthId(prevMonthDate)
@@ -135,76 +90,81 @@ export default function VisualReports({ formatCurrency }: VisualReportsProps) {
   const currentExpenses = expenses.reduce((sum, tx) => sum + tx.amount, 0)
   const expenseChange = prevExpenses > 0 ? ((currentExpenses - prevExpenses) / prevExpenses) * 100 : 0
 
+  const compactCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+
+  const topCategoryItem = categoryData[0]
+  const topCategoryShare = topCategoryItem && currentExpenses > 0
+    ? (topCategoryItem.value / currentExpenses) * 100
+    : 0
+
   return (
     <section className="budget-card">
-      <h2>Relatórios Visuais</h2>
-
-      <div className="summary-grid">
+      <div className="reports-header">
         <div>
-          <strong>Maior Gasto</strong>
-          <p>{formatCurrency(topExpense?.amount || 0)}</p>
-          <small>{topExpense?.note || topExpense?.category || 'Nenhum'}</small>
+          <h2>Relatórios Visuais</h2>
+          <p className="reports-sub">Mais gráficos, menos texto. Foco no que muda seu mês.</p>
         </div>
-        <div>
-          <strong>Categoria Mais Usada</strong>
-          <p>{mostUsedCategory[0] || 'Nenhuma'}</p>
-          <small>{formatCurrency(mostUsedCategory[1] || 0)}</small>
-        </div>
-        <div>
-          <strong>vs Mês Anterior</strong>
-          <p style={{ color: expenseChange > 0 ? 'var(--danger)' : 'var(--success)' }}>
-            {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}%
-          </p>
-          <small>{formatCurrency(currentExpenses)} vs {formatCurrency(prevExpenses)}</small>
-        </div>
-        <div>
-          <strong>Receitas do Mês</strong>
-          <p>{formatCurrency(incomes.reduce((sum, tx) => sum + tx.amount, 0))}</p>
-          <small>{incomes.length} transações</small>
+        <div className="pill">
+          {new Date(`${selectedMonth}-01`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
         </div>
       </div>
 
-      <div style={{ marginTop: '1rem', marginBottom: '1rem', display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        <div style={{ background: 'var(--surface)', borderRadius: '12px', padding: '1rem' }}>
-          <strong>Comparativo Sazonal</strong>
-          <p style={{ margin: '0.4rem 0' }}>{new Date(`${selectedMonth}-01`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} vs {new Date(`${sameMonthLastYear}-01`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
-          <p>Despesa atual: {formatCurrency(selectedData.expense)}</p>
-          <p>Despesa ano anterior: {formatCurrency(sameLastYearData.expense)}</p>
-          <p style={{ color: expenseSeasonChange > 0 ? 'var(--danger)' : 'var(--success)' }}>Variação: {expenseSeasonChange.toFixed(1)}%</p>
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-label">Gastos do mês</div>
+          <div className="kpi-value">{formatCurrency(currentExpenses)}</div>
+          <div className={`kpi-sub ${expenseChange > 0 ? 'down' : 'up'}`}>
+            {expenseChange > 0 ? '+' : ''}{expenseChange.toFixed(1)}% vs mês anterior
+          </div>
         </div>
-        <div style={{ background: 'var(--surface)', borderRadius: '12px', padding: '1rem' }}>
-          <strong>Previsão de Saldo</strong>
-          <p>Variação média mensal: {formatCurrency(averageBalanceChange)}</p>
-          <p>Saldo mês atual: {formatCurrency(selectedData.balance)}</p>
-          <p>Saldo em 3 meses: {formatCurrency(selectedData.balance + averageBalanceChange * 3)}</p>
+        <div className="kpi-card">
+          <div className="kpi-label">Receitas do mês</div>
+          <div className="kpi-value">{formatCurrency(incomes.reduce((sum, tx) => sum + tx.amount, 0))}</div>
+          <div className="kpi-sub">{incomes.length} transações</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Saldo do mês</div>
+          <div className="kpi-value">{formatCurrency(selectedData.balance)}</div>
+          <div className="kpi-sub">Média mensal: {formatCurrency(averageBalanceChange)}</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">Top categoria</div>
+          <div className="kpi-value">{topCategoryItem?.category || '—'}</div>
+          <div className="kpi-sub">{topCategoryShare.toFixed(0)}% dos gastos</div>
         </div>
       </div>
 
-      {trendMessages.length > 0 && (
-        <div style={{ marginBottom: '1rem', background: 'rgba(30, 41, 59, 0.45)', borderRadius: '12px', padding: '1rem' }}>
-          <strong>Alertas de Tendência</strong>
-          <ul style={{ marginTop: '0.5rem', paddingLeft: '1rem' }}>
-            {trendMessages.slice(0, 5).map((message, index) => (
-              <li key={index}>{message}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-        <div style={{ background: 'var(--surface)', padding: '1rem', borderRadius: '12px' }}>
-          <h3>Distribuição de Gastos</h3>
+      <div className="chart-grid">
+        <div className="chart-card">
+          <div className="chart-title">Gastos por categoria</div>
           {categoryData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={categoryData.slice(0, 6)} layout="vertical" margin={{ left: 16, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis type="number" stroke="var(--text-medium)" tickFormatter={compactCurrency} />
+                <YAxis type="category" dataKey="category" stroke="var(--text-medium)" width={90} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Bar dataKey="value" fill="var(--primary)" radius={[6, 6, 6, 6]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p style={{ textAlign: 'center', color: 'var(--text-weak)' }}>Nenhum gasto registrado</p>
+          )}
+        </div>
+
+        <div className="chart-card">
+          <div className="chart-title">Composição de gastos</div>
+          {categoryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={categoryData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={2}
                   dataKey="value"
                   nameKey="category"
                 >
@@ -212,23 +172,25 @@ export default function VisualReports({ formatCurrency }: VisualReportsProps) {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
             <p style={{ textAlign: 'center', color: 'var(--text-weak)' }}>Nenhum gasto registrado</p>
           )}
         </div>
+      </div>
 
-        <div style={{ background: 'var(--surface)', padding: '1rem', borderRadius: '12px' }}>
-          <h3>Evolução + Projeção</h3>
+      <div className="chart-grid">
+        <div className="chart-card span-2">
+          <div className="chart-title">Evolução + Projeção (últimos 6 + 3 meses)</div>
           {forecastData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={forecastData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="month" stroke="var(--text-medium)" tickFormatter={(value) => new Date(value + '-01').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })} />
-                <YAxis stroke="var(--text-medium)" tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip labelFormatter={(value) => new Date(value + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} />
+                <YAxis stroke="var(--text-medium)" tickFormatter={compactCurrency} />
+                <Tooltip labelFormatter={(value) => new Date(value + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
                 <Line type="monotone" dataKey="income" stroke="#22C55E" strokeWidth={2} name="Receitas" />
                 <Line type="monotone" dataKey="expense" stroke="#EF4444" strokeWidth={2} name="Despesas" />

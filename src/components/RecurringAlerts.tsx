@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAppContext } from '../context/AppContext'
 import type { RecurringTransaction } from '../types'
 
 interface RecurringAlertsProps {
@@ -6,17 +7,19 @@ interface RecurringAlertsProps {
 }
 
 export default function RecurringAlerts({ onClose }: RecurringAlertsProps) {
+  const { recurringTransactions } = useAppContext()
   const [upcomingRecurring, setUpcomingRecurring] = useState<RecurringTransaction[]>([])
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(() => {
     const saved = localStorage.getItem('financy-dismissed-recurring-alerts')
     return saved ? new Set(JSON.parse(saved)) : new Set()
   })
 
-  useEffect(() => {
-    const recurringTransactions: RecurringTransaction[] = JSON.parse(
-      localStorage.getItem('financy-recurring-transactions') || '[]'
-    )
+  const parseLocalDate = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
 
+  useEffect(() => {
     const today = new Date()
     const nextWeek = new Date(today)
     nextWeek.setDate(today.getDate() + 7)
@@ -25,14 +28,14 @@ export default function RecurringAlerts({ onClose }: RecurringAlertsProps) {
       if (!recurring.isActive) return false
       if (dismissedAlerts.has(recurring.id)) return false
 
-      const lastGenerated = recurring.lastGenerated ? new Date(recurring.lastGenerated) : new Date(recurring.startDate)
+      const lastGenerated = recurring.lastGenerated ? parseLocalDate(recurring.lastGenerated) : parseLocalDate(recurring.startDate)
       const nextDue = getNextDueDate(lastGenerated, recurring.recurrenceType)
 
       return nextDue <= nextWeek && nextDue >= today
     })
 
     setUpcomingRecurring(upcoming)
-  }, [dismissedAlerts])
+  }, [dismissedAlerts, recurringTransactions])
 
   const getNextDueDate = (lastDate: Date, recurrenceType: string): Date => {
     const nextDate = new Date(lastDate)
@@ -73,7 +76,7 @@ export default function RecurringAlerts({ onClose }: RecurringAlertsProps) {
   }
 
   const getDaysUntilDue = (recurring: RecurringTransaction): number => {
-    const lastGenerated = recurring.lastGenerated ? new Date(recurring.lastGenerated) : new Date(recurring.startDate)
+    const lastGenerated = recurring.lastGenerated ? parseLocalDate(recurring.lastGenerated) : parseLocalDate(recurring.startDate)
     const nextDue = getNextDueDate(lastGenerated, recurring.recurrenceType)
     const today = new Date()
     const diffTime = nextDue.getTime() - today.getTime()

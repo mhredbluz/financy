@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+﻿import { useState, useMemo } from 'react'
 import type { Transaction } from '../types'
 import { suggestCategory } from '../utils/categorySuggester'
 
@@ -25,6 +25,7 @@ export default function TransactionList({
   formatCurrency,
 }: TransactionListProps) {
   const [searchTerm, setSearchTerm] = useState('')
+  const [paymentFilter, setPaymentFilter] = useState<string>('all')
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [currentPage, setCurrentPage] = useState(1)
@@ -52,13 +53,17 @@ export default function TransactionList({
 
   // Filtrar por busca
   const filteredBySearch = useMemo(() => {
-    if (!searchTerm.trim()) return displayTransactions
+    if (!searchTerm.trim()) {
+      return displayTransactions.filter(tx => paymentFilter === 'all' || (tx.paymentMethod ?? 'debit') === paymentFilter)
+    }
     return displayTransactions.filter(tx =>
-      tx.note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.type.toLowerCase().includes(searchTerm.toLowerCase())
+      (paymentFilter === 'all' || (tx.paymentMethod ?? 'debit') === paymentFilter) && (
+        tx.note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tx.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tx.type.toLowerCase().includes(searchTerm.toLowerCase())
+      )
     )
-  }, [displayTransactions, searchTerm])
+  }, [displayTransactions, searchTerm, paymentFilter])
 
   // Ordenar
   const sortedTransactions = useMemo(() => {
@@ -105,12 +110,25 @@ export default function TransactionList({
     return sortDirection === 'asc' ? '↑' : '↓'
   }
 
+  const formatMethod = (method?: string) => {
+    switch (method) {
+      case 'credit': return 'Crédito'
+      case 'pix': return 'PIX'
+      case 'cash': return 'Dinheiro'
+      case 'transfer': return 'Transferência'
+      default: return 'Débito'
+    }
+  }
+
   return (
     <section className="list-card">
-      <h2>Transações ({filteredBySearch.length})</h2>
+      <div className="list-header">
+        <h2>Transações</h2>
+        <span className="list-count">{filteredBySearch.length} itens</span>
+      </div>
 
       {/* Controles de filtro e busca */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+      <div className="list-controls">
         <label>
           Filtrar por categoria
           <select value={categoryFilter} onChange={(e) => onCategoryChange(e.target.value)}>
@@ -120,6 +138,18 @@ export default function TransactionList({
                 {category}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label>
+          Meio de pagamento
+          <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}>
+            <option value="all">Todos</option>
+            <option value="debit">Débito</option>
+            <option value="credit">Crédito</option>
+            <option value="pix">PIX</option>
+            <option value="cash">Dinheiro</option>
+            <option value="transfer">Transferência</option>
           </select>
         </label>
 
@@ -135,82 +165,81 @@ export default function TransactionList({
       </div>
 
       {/* Controles de ordenação */}
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <span style={{ alignSelf: 'end', color: 'var(--text-weak)', fontSize: '0.9rem' }}>Ordenar por:</span>
+      <div className="list-sorts">
+        <span className="list-sorts-label">Ordenar por:</span>
         <button
           onClick={() => handleSort('date')}
+          className="sort-btn"
           style={{
             background: sortField === 'date' ? 'var(--primary)' : 'var(--surface)',
-            color: sortField === 'date' ? 'var(--text-strong)' : 'var(--text-medium)',
-            border: '1px solid var(--border)',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '0.8rem'
+            color: sortField === 'date' ? 'var(--text-strong)' : 'var(--text-medium)'
           }}
         >
           Data {getSortIcon('date')}
         </button>
         <button
           onClick={() => handleSort('amount')}
+          className="sort-btn"
           style={{
             background: sortField === 'amount' ? 'var(--primary)' : 'var(--surface)',
-            color: sortField === 'amount' ? 'var(--text-strong)' : 'var(--text-medium)',
-            border: '1px solid var(--border)',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '0.8rem'
+            color: sortField === 'amount' ? 'var(--text-strong)' : 'var(--text-medium)'
           }}
         >
           Valor {getSortIcon('amount')}
         </button>
         <button
           onClick={() => handleSort('category')}
+          className="sort-btn"
           style={{
             background: sortField === 'category' ? 'var(--primary)' : 'var(--surface)',
-            color: sortField === 'category' ? 'var(--text-strong)' : 'var(--text-medium)',
-            border: '1px solid var(--border)',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '0.8rem'
+            color: sortField === 'category' ? 'var(--text-strong)' : 'var(--text-medium)'
           }}
         >
           Categoria {getSortIcon('category')}
         </button>
         <button
           onClick={() => handleSort('type')}
+          className="sort-btn"
           style={{
             background: sortField === 'type' ? 'var(--primary)' : 'var(--surface)',
-            color: sortField === 'type' ? 'var(--text-strong)' : 'var(--text-medium)',
-            border: '1px solid var(--border)',
-            padding: '0.25rem 0.5rem',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '0.8rem'
+            color: sortField === 'type' ? 'var(--text-strong)' : 'var(--text-medium)'
           }}
         >
           Tipo {getSortIcon('type')}
         </button>
       </div>
 
-      <ul>
-        {paginatedTransactions.map((tx) => (
-          <li key={tx.id} className={tx.type === 'expense' ? 'expense' : 'income'}>
-            <span>{tx.date}</span>
-            <span>{tx.category}</span>
-            <span>{tx.type}</span>
-            <span>{formatCurrency(tx.amount)}</span>
-            <button onClick={() => onEdit(tx.id)}>Editar</button>
-            <button onClick={() => onDelete(tx.id)}>Remover</button>
-          </li>
-        ))}
-      </ul>
+      <div className="list-table">
+        <div className="list-row list-header-row">
+          <span>Data</span>
+          <span>Categoria</span>
+          <span>Método</span>
+          <span>Tipo</span>
+          <span>Valor</span>
+          <span>Ações</span>
+        </div>
+        {paginatedTransactions.length === 0 ? (
+          <div className="list-empty">Nenhuma transação encontrada.</div>
+        ) : (
+          paginatedTransactions.map((tx) => (
+            <div key={tx.id} className={`list-row ${tx.type}`}>
+              <span>{tx.date}</span>
+              <span>{tx.category}</span>
+              <span className="pill-mini">{formatMethod(tx.paymentMethod)}</span>
+              <span className="pill-mini">{tx.type === 'expense' ? 'Despesa' : 'Receita'}</span>
+              <span className="amount">{formatCurrency(tx.amount)}</span>
+              <span className="row-actions">
+                <button onClick={() => onEdit(tx.id)} className="ghost-btn">Editar</button>
+                <button onClick={() => onDelete(tx.id)} className="ghost-btn danger">Remover</button>
+              </span>
+            </div>
+          ))
+        )}
+      </div>
 
       {/* Paginação */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
+        <div className="list-pagination">
           <button
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}

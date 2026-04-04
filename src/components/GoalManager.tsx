@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { Goal, GoalType } from '../types'
+import { addGoal as persistAddGoal, updateGoal as persistUpdateGoal, deleteGoal as persistDeleteGoal, loadAppData } from '../storage'
+import { useGoalsContext } from '../context/GoalsContext'
 
 interface GoalManagerProps {
   onClose: () => void
@@ -7,10 +9,7 @@ interface GoalManagerProps {
 }
 
 export default function GoalManager({ onClose, selectedMonth }: GoalManagerProps) {
-  const [goals, setGoals] = useState<Goal[]>(() => {
-    const saved = localStorage.getItem('financy-custom-goals')
-    return saved ? JSON.parse(saved) : []
-  })
+  const { goals, setGoals } = useGoalsContext()
 
   const [newGoal, setNewGoal] = useState({
     type: 'savings' as GoalType,
@@ -26,34 +25,32 @@ export default function GoalManager({ onClose, selectedMonth }: GoalManagerProps
   // Filtrar metas do mês selecionado
   const currentMonthGoals = goals.filter(goal => goal.month === selectedMonth)
 
-  // Salvar metas no localStorage
-  useEffect(() => {
-    localStorage.setItem('financy-custom-goals', JSON.stringify(goals))
-  }, [goals])
-
-  const addGoal = () => {
+  const handleSaveGoal = () => {
     if (!newGoal.title.trim() || newGoal.targetAmount <= 0) return
 
+    const existing = editingId ? goals.find((g) => g.id === editingId) : undefined
     const goal: Goal = {
-      id: crypto.randomUUID(),
+      id: existing?.id ?? crypto.randomUUID(),
       type: newGoal.type,
       title: newGoal.title.trim(),
       description: newGoal.description.trim() || undefined,
       targetAmount: newGoal.targetAmount,
       category: newGoal.type === 'category_limit' ? newGoal.category : undefined,
-      month: selectedMonth,
-      createdAt: new Date().toISOString(),
+      month: existing?.month ?? selectedMonth,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
       deadline: newGoal.deadline || undefined
     }
 
     if (editingId) {
       // Editando meta existente
-      setGoals(goals.map(g => g.id === editingId ? goal : g))
+      persistUpdateGoal(goal)
       setEditingId(null)
     } else {
       // Adicionando nova meta
-      setGoals([...goals, goal])
+      persistAddGoal(goal)
     }
+
+    setGoals(loadAppData().goals ?? [])
 
     // Resetar formulário
     setNewGoal({
@@ -78,9 +75,10 @@ export default function GoalManager({ onClose, selectedMonth }: GoalManagerProps
     setEditingId(goal.id)
   }
 
-  const deleteGoal = (goalId: string) => {
+  const handleDeleteGoal = (goalId: string) => {
     if (confirm('Tem certeza que deseja excluir esta meta?')) {
-      setGoals(goals.filter(g => g.id !== goalId))
+      persistDeleteGoal(goalId)
+      setGoals(loadAppData().goals ?? [])
     }
   }
 
@@ -187,7 +185,7 @@ export default function GoalManager({ onClose, selectedMonth }: GoalManagerProps
             </label>
 
             <div className="form-buttons">
-              <button onClick={addGoal} style={{ background: 'var(--success)', color: 'white' }}>
+              <button onClick={handleSaveGoal} style={{ background: 'var(--success)', color: 'white' }}>
                 {editingId ? 'Atualizar Meta' : '+ Adicionar Meta'}
               </button>
               {editingId && (
@@ -240,7 +238,7 @@ export default function GoalManager({ onClose, selectedMonth }: GoalManagerProps
                   </div>
                   <div className="category-actions">
                     <button onClick={() => editGoal(goal)} className="edit-btn" title="Editar">✏️</button>
-                    <button onClick={() => deleteGoal(goal.id)} className="delete-btn" title="Excluir">🗑️</button>
+                    <button onClick={() => handleDeleteGoal(goal.id)} className="delete-btn" title="Excluir">🗑️</button>
                   </div>
                 </div>
               ))

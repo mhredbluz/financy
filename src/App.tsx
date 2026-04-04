@@ -17,20 +17,32 @@ import RecurringAlerts from './components/RecurringAlerts'
 import BackupManager from './components/BackupManager'
 import NotificationsPanel from './components/NotificationsPanel'
 import IntegrationsPanel from './components/IntegrationsPanel'
+import ReceiptUploader from './components/ReceiptUploader'
+import RecurringOverview from './components/RecurringOverview'
+import CardStatementImporter from './components/CardStatementImporter'
 import { AppProvider } from './context/AppContext'
+import { GoalsProvider } from './context/GoalsContext'
 import { addTransaction, deleteTransaction, loadAppData, saveAppData, setBudget, updateTransaction, generateRecurringTransactions } from './storage'
 import { getDashboardSummary, getCategorySummary, type DashboardSummary, type CategorySummaryItem } from './api/dashboard'
 
 function App() {
+  const toLocalISODate = (date = new Date()) => {
+    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    return d.toISOString().slice(0, 10)
+  }
+  const parseLocalDate = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadAppData().transactions)
   const [goals, setGoals] = useState<Goal[]>(() => loadAppData().goals ?? [])
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7))
-  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => toLocalISODate().slice(0, 7))
+  const [selectedDate, setSelectedDate] = useState<string>(() => toLocalISODate())
   const [calendarView, setCalendarView] = useState<'day'|'week'|'month'|'year'>('day')
   const [budgetLimit, setBudgetLimit] = useState<number>(() => loadAppData().budget?.limit ?? 1200)
   const [editingTxId, setEditingTxId] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [form, setForm] = useState({ type: 'expense' as TransactionType, date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '', allocatedToGoal: undefined as string | undefined })
+  const [form, setForm] = useState({ type: 'expense' as TransactionType, date: toLocalISODate(), amount: 0, category: '', note: '', allocatedToGoal: undefined as string | undefined, paymentMethod: 'debit' as const })
   const [feedback, setFeedback] = useState<string | null>(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
   const [showGoalManager, setShowGoalManager] = useState(false)
@@ -39,8 +51,9 @@ function App() {
   const [showRecurringAlerts, setShowRecurringAlerts] = useState(false)
   const [showIntegrations, setShowIntegrations] = useState(false)
   const [activeTab, setActiveTab] = useState<'summary' | 'reports' | 'goals' | 'gamification' | 'notifications'>('summary')
-  const [currentView, setCurrentView] = useState<'dashboard' | 'transactions' | 'settings'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'transactions' | 'cards' | 'settings'>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>(() => loadAppData().recurringTransactions ?? [])
 
   const getNextDueDate = (lastDate: Date, recurrenceType: string): Date => {
     const nextDate = new Date(lastDate)
@@ -65,9 +78,6 @@ function App() {
 
   // Contar alertas de recorrências pendentes
   const pendingAlertsCount = useMemo(() => {
-    const recurringTransactions: RecurringTransaction[] = JSON.parse(
-      localStorage.getItem('financy-recurring-transactions') || '[]'
-    )
     const dismissedAlerts: string[] = JSON.parse(
       localStorage.getItem('financy-dismissed-recurring-alerts') || '[]'
     )
@@ -81,12 +91,12 @@ function App() {
       if (!recurring.isActive) return false
       if (dismissedSet.has(recurring.id)) return false
 
-      const lastGenerated = recurring.lastGenerated ? new Date(recurring.lastGenerated) : new Date(recurring.startDate)
+      const lastGenerated = recurring.lastGenerated ? parseLocalDate(recurring.lastGenerated) : parseLocalDate(recurring.startDate)
       const nextDue = getNextDueDate(lastGenerated, recurring.recurrenceType)
 
       return nextDue <= nextWeek && nextDue >= today
     }).length
-  }, [transactions]) // Recalcular quando transactions mudam
+  }, [recurringTransactions]) // Recalcular quando recorrÃªncias mudam
 
 
   // Gerar transações recorrentes automaticamente ao carregar o app
@@ -94,6 +104,14 @@ function App() {
     generateRecurringTransactions()
     setTransactions(loadAppData().transactions)
   }, [])
+
+  useEffect(() => {
+    const data = loadAppData()
+    data.recurringTransactions = recurringTransactions
+    saveAppData(data, false)
+    generateRecurringTransactions()
+    setTransactions(loadAppData().transactions)
+  }, [recurringTransactions])
 
   const monthOptions = useMemo(() => {
     const months = [] as string[]
@@ -126,10 +144,10 @@ function App() {
 
   const dashboardSummary: DashboardSummary = useMemo(
     () => {
-      const now = new Date(selectedDate)
-      return getDashboardSummary(selectedTransactions, budgetLimit, now)
+      const now = parseLocalDate(selectedDate)
+      return getDashboardSummary(transactions, recurringTransactions, budgetLimit, now)
     },
-    [selectedTransactions, budgetLimit, selectedDate],
+    [transactions, recurringTransactions, budgetLimit, selectedDate],
   )
 
   const categorySummary: CategorySummaryItem[] = useMemo(
@@ -137,7 +155,7 @@ function App() {
     [transactions, selectedMonth],
   )
 
-  const todayISO = new Date().toISOString().slice(0, 10)
+  const todayISO = toLocalISODate()
   const status = dashboardSummary.saldo < 0 ? 'danger' : 'ok'
   const statusHoje = dashboardSummary.statusHoje.toLowerCase() === 'ok' ? 'ok' : 'danger'
 
@@ -162,6 +180,7 @@ function App() {
         amount: form.amount,
         category: form.category,
         note: form.note,
+        paymentMethod: form.paymentMethod,
         allocatedToGoal: form.allocatedToGoal,
       }
 
@@ -184,7 +203,7 @@ function App() {
 
       setEditingTxId(null)
       setTransactions(loadAppData().transactions)
-      setForm({ type: 'expense', date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '', allocatedToGoal: undefined })
+      setForm({ type: 'expense', date: toLocalISODate(), amount: 0, category: '', note: '', paymentMethod: 'debit', allocatedToGoal: undefined })
       return
     }
 
@@ -195,6 +214,7 @@ function App() {
       amount: form.amount,
       category: form.category,
       note: form.note,
+      paymentMethod: form.paymentMethod,
       allocatedToGoal: form.allocatedToGoal,
     }
 
@@ -228,7 +248,7 @@ function App() {
 
     setTimeout(() => setFeedback(null), 3000)
 
-    setForm({ ...form, amount: 0, category: '', note: '', allocatedToGoal: undefined })
+    setForm({ ...form, amount: 0, category: '', note: '', paymentMethod: 'debit', allocatedToGoal: undefined })
   }
 
   const handleDelete = (id: string) => {
@@ -236,11 +256,28 @@ function App() {
     setTransactions(loadAppData().transactions)
   }
 
+  const handleImportCardStatement = (items: { date: string; amount: number; description: string }[]) => {
+    if (items.length === 0) return
+    items.forEach((item) => {
+      const tx: Transaction = {
+        id: crypto.randomUUID(),
+        date: item.date,
+        type: 'expense',
+        amount: item.amount,
+        category: 'Cartão',
+        note: item.description,
+        paymentMethod: 'credit',
+      }
+      addTransaction(tx)
+    })
+    setTransactions(loadAppData().transactions)
+  }
+
   const handleEdit = (id: string) => {
     const tx = transactions.find((item) => item.id === id)
     if (!tx) return
     setEditingTxId(id)
-    setForm({ type: tx.type, date: tx.date, amount: tx.amount, category: tx.category, note: tx.note ?? '', allocatedToGoal: tx.allocatedToGoal })
+    setForm({ type: tx.type, date: tx.date, amount: tx.amount, category: tx.category, note: tx.note ?? '', paymentMethod: tx.paymentMethod ?? 'debit', allocatedToGoal: tx.allocatedToGoal })
   }
 
   const updateBudget = () => {
@@ -253,16 +290,29 @@ function App() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
-  const appContextValue = { transactions, selectedMonth, budgetLimit }
+  const appContextValue = { transactions, selectedMonth, selectedDate, budgetLimit, recurringTransactions, setRecurringTransactions }
+
+  const goalsContextValue = { goals, setGoals }
 
   return (
     <AppProvider value={appContextValue}>
+    <GoalsProvider value={goalsContextValue}>
     <div className="App">
       <nav className="sidebar" data-open={sidebarOpen}>
         <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
           {sidebarOpen ? '✕' : '☰'}
         </button>
+        <div className="sidebar-brand">
+          <div className="brand-mark">F</div>
+          {sidebarOpen && (
+            <div className="brand-text">
+              <strong>Financy</strong>
+              <span>controle real</span>
+            </div>
+          )}
+        </div>
         <div className="sidebar-content">
+          {sidebarOpen && <div className="sidebar-section">Principal</div>}
           <button className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentView('dashboard'); setSidebarOpen(false); }}>
             <span className="icon">🏠</span>
             {sidebarOpen && <span className="label">Dashboard</span>}
@@ -271,11 +321,21 @@ function App() {
             <span className="icon">💳</span>
             {sidebarOpen && <span className="label">Transações</span>}
           </button>
+          <button className={`nav-btn ${currentView === 'cards' ? 'active' : ''}`} onClick={() => { setCurrentView('cards'); setSidebarOpen(false); }}>
+            <span className="icon">💼</span>
+            {sidebarOpen && <span className="label">Cartões</span>}
+          </button>
+          {sidebarOpen && <div className="sidebar-section">Configurações</div>}
           <button className={`nav-btn ${currentView === 'settings' ? 'active' : ''}`} onClick={() => { setCurrentView('settings'); setSidebarOpen(false); }}>
             <span className="icon">⚙️</span>
             {sidebarOpen && <span className="label">Configurações</span>}
           </button>
         </div>
+        {sidebarOpen && (
+          <div className="sidebar-footer">
+            <span>v0.1 • local-first</span>
+          </div>
+        )}
       </nav>
 
       <main className="main-content">
@@ -291,11 +351,17 @@ function App() {
               summary={dashboardSummary}
               selectedDate={selectedDate}
               calendarView={calendarView}
-              onDateChange={setSelectedDate}
+              onDateChange={(nextDate) => {
+                setSelectedDate(nextDate)
+                const newMonth = nextDate.slice(0, 7)
+                if (selectedMonth !== newMonth) setSelectedMonth(newMonth)
+              }}
               onViewChange={setCalendarView}
             />
 
             <BudgetAlerts />
+
+            <RecurringOverview />
 
             <section className={`app-status ${status}`}>
               <div>
@@ -332,15 +398,7 @@ function App() {
 
             {activeTab === 'summary' && (
               <BudgetSummary
-                month={selectedMonth}
-                monthOptions={monthOptions}
-                selectedMonth={selectedMonth}
-                onMonthChange={(next) => {
-                  setSelectedMonth(next)
-                  const stored = loadAppData().budget
-                  if (stored?.month === next) setBudgetLimit(stored.limit)
-                }}
-                onSaveBudget={updateBudget}
+                selectedDate={selectedDate}
                 summary={dashboardSummary}
               />
             )}
@@ -351,7 +409,6 @@ function App() {
 
             {activeTab === 'goals' && (
               <GoalProgress
-                goals={JSON.parse(localStorage.getItem('financy-custom-goals') || '[]')}
                 transactions={transactions}
                 selectedMonth={selectedMonth}
                 formatCurrency={formatCurrency}
@@ -371,6 +428,18 @@ function App() {
 
       {currentView === 'transactions' && (
         <div className="transactions-view">
+          <ReceiptUploader
+            onApply={(data) => {
+              setForm((old) => ({
+                ...old,
+                type: data.type ?? old.type,
+                date: data.date ?? old.date,
+                amount: data.amount ?? old.amount,
+                note: data.note ?? old.note,
+                paymentMethod: old.paymentMethod ?? 'debit',
+              }))
+            }}
+          />
           <TransactionForm
             form={form}
             setForm={setForm}
@@ -378,7 +447,7 @@ function App() {
             isEditing={!!editingTxId}
             onCancelEdit={() => {
               setEditingTxId(null)
-              setForm({ type: 'expense', date: new Date().toISOString().slice(0, 10), amount: 0, category: '', note: '' })
+              setForm({ type: 'expense', date: toLocalISODate(), amount: 0, category: '', note: '', paymentMethod: 'debit' })
             }}
           />
 
@@ -457,6 +526,26 @@ function App() {
         />
       )}
 
+      {currentView === 'cards' && (
+        <div className="transactions-view">
+          <CardStatementImporter onImport={handleImportCardStatement} />
+          <section className="list-card tips-card">
+            <div className="reports-header">
+              <div>
+                <h2>Dicas rápidas</h2>
+                <p className="reports-sub">Boas práticas para cartão de crédito</p>
+              </div>
+              <div className="pill">Guia</div>
+            </div>
+            <ul className="tips-list">
+              <li>Importe sua fatura e gere lançamentos no crédito.</li>
+              <li>O pagamento da fatura não entra como gasto novo.</li>
+              <li>Você pode ajustar categoria depois, se necessário.</li>
+            </ul>
+          </section>
+        </div>
+      )}
+
       {showRecurringManager && (
         <RecurringManager onClose={() => setShowRecurringManager(false)} />
       )}
@@ -477,8 +566,10 @@ function App() {
       )}
       </main>
     </div>
+    </GoalsProvider>
     </AppProvider>
   )
 }
 
 export default App
+

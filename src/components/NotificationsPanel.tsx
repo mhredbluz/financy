@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useAppContext } from '../context/AppContext'
+import type { Transaction } from '../types'
 
 const formatDate = (ts: string) => new Date(ts).toLocaleDateString('pt-BR')
 
@@ -9,20 +10,20 @@ function getLatestTransactionDate(transactions: Transaction[]): string | null {
   return dates[0]
 }
 
-function getDaysAgoFromDate(date: string): number {
+function getDaysAgoFromDate(date: string, baseDate: Date): number {
   const d = new Date(date)
-  const today = new Date()
-  const diff = today.getTime() - d.getTime()
+  const diff = baseDate.getTime() - d.getTime()
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
 export default function NotificationsPanel() {
-  const { transactions, selectedMonth, budgetLimit } = useAppContext()
+  const { transactions, selectedMonth, selectedDate, budgetLimit } = useAppContext()
   const [notifications, setNotifications] = useState<string[]>([])
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default')
 
   const lastTransactionDate = getLatestTransactionDate(transactions)
-  const daysSinceLastTransaction = lastTransactionDate ? getDaysAgoFromDate(lastTransactionDate) : Infinity
+  const baseDate = new Date(selectedDate)
+  const daysSinceLastTransaction = lastTransactionDate ? getDaysAgoFromDate(lastTransactionDate, baseDate) : Infinity
 
   const monthExpenses = useMemo(() => {
     return transactions
@@ -37,7 +38,7 @@ export default function NotificationsPanel() {
   useEffect(() => {
     const stored = localStorage.getItem('financy-last-notification')
     const seen = stored ? JSON.parse(stored as string) as Record<string, string> : {}
-    const now = new Date().toISOString().slice(0, 10)
+    const now = new Date(selectedDate).toISOString().slice(0, 10)
 
     const newNotifications: string[] = []
 
@@ -54,7 +55,7 @@ export default function NotificationsPanel() {
       if (monthProgress >= threshold) {
         const key = `budget-${threshold}`
         if (seen[key] !== now) {
-          newNotifications.push(`⚠️ Alerta orçamento: você atingiu ${threshold}% do seu limite mensal (${formatDate(new Date().toISOString())}).`)
+          newNotifications.push(`⚠️ Alerta orçamento: você atingiu ${threshold}% do seu limite mensal (${formatDate(new Date(selectedDate).toISOString())}).`)
           seen[key] = now
         }
       }
@@ -70,7 +71,7 @@ export default function NotificationsPanel() {
         })
       }
     }
-  }, [daysSinceLastTransaction, monthProgress, permissionStatus])
+  }, [daysSinceLastTransaction, monthProgress, permissionStatus, selectedDate])
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -131,3 +132,4 @@ export default function NotificationsPanel() {
     </section>
   )
 }
+

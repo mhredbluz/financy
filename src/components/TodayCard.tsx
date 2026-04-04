@@ -1,4 +1,7 @@
 ﻿import type { DashboardSummary } from '../api/dashboard'
+import { useAppContext } from '../context/AppContext'
+import { useGoalsContext } from '../context/GoalsContext'
+import { isDueOn } from '../utils/recurrence'
 
 type CalendarView = 'day' | 'week' | 'month' | 'year'
 
@@ -10,14 +13,26 @@ interface TodayCardProps {
   onViewChange: (view: CalendarView) => void
 }
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
+const parseLocalDate = (iso: string) => {
+  const [year, month, day] = iso.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
 
-const toMonthLabel = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+const formatDate = (iso: string) =>
+  parseLocalDate(iso).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
 
-const toYearLabel = (iso: string) => new Date(iso).getFullYear().toString()
+const toMonthLabel = (iso: string) =>
+  parseLocalDate(iso).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+
+const toYearLabel = (iso: string) => parseLocalDate(iso).getFullYear().toString()
+
+const toLocalISODate = (date: Date) => {
+  const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return d.toISOString().slice(0, 10)
+}
 
 const moveN = (base: string, value: number, unit: CalendarView): string => {
-  const d = new Date(base)
+  const d = parseLocalDate(base)
   switch (unit) {
     case 'day':
       d.setDate(d.getDate() + value)
@@ -32,10 +47,12 @@ const moveN = (base: string, value: number, unit: CalendarView): string => {
       d.setFullYear(d.getFullYear() + value)
       break
   }
-  return d.toISOString().slice(0, 10)
+  return toLocalISODate(d)
 }
 
 export default function TodayCard({ summary, selectedDate, calendarView, onDateChange, onViewChange }: TodayCardProps) {
+  const { transactions, recurringTransactions } = useAppContext()
+  const { goals } = useGoalsContext()
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
@@ -60,8 +77,34 @@ export default function TodayCard({ summary, selectedDate, calendarView, onDateC
   const handlePrev = () => onDateChange(moveN(selectedDate, -1, calendarView))
   const handleNext = () => onDateChange(moveN(selectedDate, 1, calendarView))
 
+  const dayTransactions = transactions.filter((tx) => tx.date === selectedDate)
+  const dayExpenses = dayTransactions.filter((tx) => tx.type === 'expense')
+
+  const recurringDueToday = recurringTransactions.filter((rec) => {
+    if (!rec.isActive) return false
+    return isDueOn(rec, selectedDate)
+  })
+
+  const selectedMonth = selectedDate.slice(0, 7)
+  const monthTransactions = transactions.filter((tx) => tx.date.startsWith(selectedMonth))
+
+  const openGoals = goals.filter((goal) => {
+    if (goal.month !== selectedMonth) return false
+    if (goal.type === 'savings' || goal.type === 'monthly_target') {
+      const allocated = goal.allocatedAmount || 0
+      return allocated < goal.targetAmount
+    }
+    if (goal.type === 'category_limit' && goal.category) {
+      const spent = monthTransactions
+        .filter((tx) => tx.type === 'expense' && tx.category === goal.category)
+        .reduce((sum, tx) => sum + tx.amount, 0)
+      return spent < goal.targetAmount
+    }
+    return true
+  })
+
   return (
-    <section className={`today-card ${isOver ? 'over' : 'ok'}`}>
+    <section key={selectedDate} className={`today-card ${isOver ? 'over' : 'ok'}`}>
       <div className="today-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
         <h2>📅 {title}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -110,6 +153,68 @@ export default function TodayCard({ summary, selectedDate, calendarView, onDateC
           <p>🟢 Dentro do orçamento! Restam {formatCurrency(summary.diferencaHoje)}</p>
         </div>
       )}
+
+      <div className="today-sections">
+        <div className="today-section">
+          <div className="today-section-title">Contas do dia</div>
+          {dayExpenses.length === 0 ? (
+            <p className="today-empty">Nenhuma despesa registrada hoje.</p>
+          ) : (
+            <ul className="today-list">
+              {dayExpenses.slice(0, 6).map((tx) => (
+                <li key={tx.id}>
+                  <span>{tx.category || 'Sem categoria'}</span>
+                  <strong>{formatCurrency(tx.amount)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="today-section">
+          <div className="today-section-title">Recorrências de hoje</div>
+          {recurringDueToday.length === 0 ? (
+            <p className="today-empty">Nenhuma recorrência vence hoje.</p>
+          ) : (
+            <ul className="today-list">
+              {recurringDueToday.map((rec) => (
+                <li key={rec.id}>
+                  <span>{rec.category}</span>
+                  <strong>{formatCurrency(rec.amount)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="today-section">
+          <div className="today-section-title">Metas em aberto</div>
+          {openGoals.length === 0 ? (
+            <p className="today-empty">Nenhuma meta pendente neste mês.</p>
+          ) : (
+            <ul className="today-list">
+              {openGoals.slice(0, 6).map((goal) => {
+                let remaining = 0
+                if (goal.type === 'savings' || goal.type === 'monthly_target') {
+                  remaining = goal.targetAmount - (goal.allocatedAmount || 0)
+                } else if (goal.type === 'category_limit' && goal.category) {
+                  const spent = monthTransactions
+                    .filter((tx) => tx.type === 'expense' && tx.category === goal.category)
+                    .reduce((sum, tx) => sum + tx.amount, 0)
+                  remaining = goal.targetAmount - spent
+                }
+                return (
+                  <li key={goal.id}>
+                    <span>{goal.title}</span>
+                    <strong>{formatCurrency(Math.max(0, remaining))}</strong>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
     </section>
   )
 }
+

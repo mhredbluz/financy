@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+﻿import { useState } from 'react'
+import { useAppContext } from '../context/AppContext'
 import type { RecurringTransaction, RecurrenceType, TransactionType } from '../types'
 
 interface RecurringManagerProps {
@@ -6,10 +7,17 @@ interface RecurringManagerProps {
 }
 
 export default function RecurringManager({ onClose }: RecurringManagerProps) {
-  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>(() => {
-    const saved = localStorage.getItem('financy-recurring-transactions')
-    return saved ? JSON.parse(saved) : []
-  })
+  const { recurringTransactions, setRecurringTransactions } = useAppContext()
+
+  const toLocalISODate = (date = new Date()) => {
+    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    return d.toISOString().slice(0, 10)
+  }
+  const parseLocalDate = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+  const formatLocalDate = (iso: string) => parseLocalDate(iso).toLocaleDateString('pt-BR')
 
   const [newRecurring, setNewRecurring] = useState({
     type: 'expense' as TransactionType,
@@ -17,17 +25,12 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
     category: '',
     note: '',
     recurrenceType: 'monthly' as RecurrenceType,
-    startDate: new Date().toISOString().slice(0, 10),
+    startDate: toLocalISODate(),
     endDate: '',
     isActive: true
   })
 
   const [editingId, setEditingId] = useState<string | null>(null)
-
-  // Salvar recorrências no localStorage
-  useEffect(() => {
-    localStorage.setItem('financy-recurring-transactions', JSON.stringify(recurringTransactions))
-  }, [recurringTransactions])
 
   const addRecurring = () => {
     if (!newRecurring.amount || !newRecurring.category.trim()) return
@@ -46,22 +49,22 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
     }
 
     if (editingId) {
-      // Editando recorrência existente
+      // Editando recorrÃªncia existente
       setRecurringTransactions(recurringTransactions.map(r => r.id === editingId ? recurring : r))
       setEditingId(null)
     } else {
-      // Adicionando nova recorrência
+      // Adicionando nova recorrÃªncia
       setRecurringTransactions([...recurringTransactions, recurring])
     }
 
-    // Resetar formulário
+    // Resetar formulÃ¡rio
     setNewRecurring({
       type: 'expense',
       amount: 0,
       category: '',
       note: '',
       recurrenceType: 'monthly',
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: toLocalISODate(),
       endDate: '',
       isActive: true
     })
@@ -82,7 +85,7 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
   }
 
   const deleteRecurring = (recurringId: string) => {
-    if (confirm('Tem certeza que deseja excluir esta recorrência? Todas as transações futuras geradas por ela também serão removidas.')) {
+    if (confirm('Tem certeza que deseja excluir esta recorrÃªncia? Todas as transaÃ§Ãµes futuras geradas por ela tambÃ©m serÃ£o removidas.')) {
       setRecurringTransactions(recurringTransactions.filter(r => r.id !== recurringId))
     }
   }
@@ -95,7 +98,7 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
 
   const getRecurrenceLabel = (type: RecurrenceType) => {
     switch (type) {
-      case 'daily': return 'Diária'
+      case 'daily': return 'DiÃ¡ria'
       case 'weekly': return 'Semanal'
       case 'monthly': return 'Mensal'
       case 'yearly': return 'Anual'
@@ -105,11 +108,11 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
 
   const getRecurrenceIcon = (type: RecurrenceType) => {
     switch (type) {
-      case 'daily': return '📅'
-      case 'weekly': return '📊'
-      case 'monthly': return '🗓️'
-      case 'yearly': return '🎯'
-      default: return '🔄'
+      case 'daily': return 'ðŸ“…'
+      case 'weekly': return 'ðŸ“Š'
+      case 'monthly': return 'ðŸ—“ï¸'
+      case 'yearly': return 'ðŸŽ¯'
+      default: return 'ðŸ”„'
     }
   }
 
@@ -118,18 +121,18 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
       <div className="category-manager">
         <div className="category-manager-header">
           <div>
-            <h3>Gerenciar Transações Recorrentes</h3>
+            <h3>Gerenciar TransaÃ§Ãµes Recorrentes</h3>
             <small style={{ fontSize: '0.8rem', color: 'var(--text-weak)' }}>
-              💡 Pressione Esc para fechar
+              ðŸ’¡ Pressione Esc para fechar
             </small>
           </div>
-          <button onClick={onClose} className="close-btn">✕</button>
+          <button onClick={onClose} className="close-btn">âœ•</button>
         </div>
 
         <div className="category-manager-content">
-          {/* Formulário para adicionar/editar recorrência */}
+          {/* FormulÃ¡rio para adicionar/editar recorrÃªncia */}
           <div className="add-category-form">
-            <h4>{editingId ? 'Editar Recorrência' : 'Adicionar Nova Recorrência'}</h4>
+            <h4>{editingId ? 'Editar RecorrÃªncia' : 'Adicionar Nova RecorrÃªncia'}</h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <label>
@@ -138,8 +141,8 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
                   value={newRecurring.type}
                   onChange={(e) => setNewRecurring(prev => ({ ...prev, type: e.target.value as TransactionType }))}
                 >
-                  <option value="expense">💸 Despesa</option>
-                  <option value="income">💰 Receita</option>
+                  <option value="expense">ðŸ’¸ Despesa</option>
+                  <option value="income">ðŸ’° Receita</option>
                 </select>
               </label>
 
@@ -167,22 +170,22 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
               </label>
 
               <label>
-                Frequência
+                FrequÃªncia
                 <select
                   value={newRecurring.recurrenceType}
                   onChange={(e) => setNewRecurring(prev => ({ ...prev, recurrenceType: e.target.value as RecurrenceType }))}
                 >
-                  <option value="daily">📅 Diária</option>
-                  <option value="weekly">📊 Semanal</option>
-                  <option value="monthly">🗓️ Mensal</option>
-                  <option value="yearly">🎯 Anual</option>
+                  <option value="daily">ðŸ“… DiÃ¡ria</option>
+                  <option value="weekly">ðŸ“Š Semanal</option>
+                  <option value="monthly">ðŸ—“ï¸ Mensal</option>
+                  <option value="yearly">ðŸŽ¯ Anual</option>
                 </select>
               </label>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <label>
-                Data de Início
+                Data de InÃ­cio
                 <input
                   type="date"
                   value={newRecurring.startDate}
@@ -201,7 +204,7 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
             </div>
 
             <label>
-              Descrição
+              DescriÃ§Ã£o
               <input
                 type="text"
                 value={newRecurring.note}
@@ -212,7 +215,7 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
 
             <div className="form-buttons">
               <button onClick={addRecurring} style={{ background: 'var(--success)', color: 'white' }}>
-                {editingId ? 'Atualizar Recorrência' : '+ Adicionar Recorrência'}
+                {editingId ? 'Atualizar RecorrÃªncia' : '+ Adicionar RecorrÃªncia'}
               </button>
               {editingId && (
                 <button
@@ -224,41 +227,41 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
                       category: '',
                       note: '',
                       recurrenceType: 'monthly',
-                      startDate: new Date().toISOString().slice(0, 10),
+                      startDate: toLocalISODate(),
                       endDate: '',
                       isActive: true
                     })
                   }}
                   className="cancel-btn"
                 >
-                  Cancelar Edição
+                  Cancelar EdiÃ§Ã£o
                 </button>
               )}
             </div>
           </div>
 
-          {/* Lista de recorrências */}
+          {/* Lista de recorrÃªncias */}
           <div className="custom-categories-list">
-            <h4>Recorrências Ativas</h4>
+            <h4>RecorrÃªncias Ativas</h4>
 
             {recurringTransactions.length === 0 ? (
               <div className="empty-state">
-                <p>Nenhuma recorrência cadastrada.</p>
-                <p>💡 Cadastre assinaturas, salários fixos e outras transações que se repetem automaticamente!</p>
+                <p>Nenhuma recorrÃªncia cadastrada.</p>
+                <p>ðŸ’¡ Cadastre assinaturas, salÃ¡rios fixos e outras transaÃ§Ãµes que se repetem automaticamente!</p>
               </div>
             ) : (
               recurringTransactions.map((recurring) => (
                 <div key={recurring.id} className="category-item">
                   <div className="category-info">
                     <strong>
-                      {recurring.type === 'expense' ? '💸' : '💰'} {recurring.category}
+                      {recurring.type === 'expense' ? 'ðŸ’¸' : 'ðŸ’°'} {recurring.category}
                       {!recurring.isActive && <span style={{ color: 'var(--text-weak)', fontSize: '0.8rem' }}> (Inativa)</span>}
                     </strong>
                     <small>
-                      {getRecurrenceIcon(recurring.recurrenceType)} {getRecurrenceLabel(recurring.recurrenceType)} •
-                      R$ {recurring.amount.toFixed(2)} •
-                      Início: {new Date(recurring.startDate).toLocaleDateString('pt-BR')}
-                      {recurring.endDate && ` • Fim: ${new Date(recurring.endDate).toLocaleDateString('pt-BR')}`}
+                      {getRecurrenceIcon(recurring.recurrenceType)} {getRecurrenceLabel(recurring.recurrenceType)} â€¢
+                      R$ {recurring.amount.toFixed(2)} â€¢
+                      InÃ­cio: {formatLocalDate(recurring.startDate)}
+                      {recurring.endDate && ` â€¢ Fim: ${formatLocalDate(recurring.endDate)}`}
                     </small>
                     {recurring.note && (
                       <small style={{ display: 'block', marginTop: '0.25rem', fontStyle: 'italic' }}>
@@ -280,10 +283,10 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
                       }}
                       title={recurring.isActive ? 'Desativar' : 'Ativar'}
                     >
-                      {recurring.isActive ? '✅' : '⏸️'}
+                      {recurring.isActive ? 'âœ…' : 'â¸ï¸'}
                     </button>
-                    <button onClick={() => editRecurring(recurring)} className="edit-btn" title="Editar">✏️</button>
-                    <button onClick={() => deleteRecurring(recurring.id)} className="delete-btn" title="Excluir">🗑️</button>
+                    <button onClick={() => editRecurring(recurring)} className="edit-btn" title="Editar">âœï¸</button>
+                    <button onClick={() => deleteRecurring(recurring.id)} className="delete-btn" title="Excluir">ðŸ—‘ï¸</button>
                   </div>
                 </div>
               ))
@@ -293,10 +296,11 @@ export default function RecurringManager({ onClose }: RecurringManagerProps) {
 
         <div className="category-manager-footer">
           <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-medium)' }}>
-            🔄 As recorrências geram transações automaticamente todos os dias!
+            ðŸ”„ As recorrÃªncias geram transaÃ§Ãµes automaticamente todos os dias!
           </p>
         </div>
       </div>
     </div>
   )
 }
+

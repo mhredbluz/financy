@@ -1,13 +1,14 @@
 import type { Goal, Transaction } from '../types'
+import { useGoalsContext } from '../context/GoalsContext'
 
 interface GoalProgressProps {
-  goals: Goal[]
   transactions: Transaction[]
   selectedMonth: string
   formatCurrency: (value: number) => string
 }
 
-export default function GoalProgress({ goals, transactions, selectedMonth, formatCurrency }: GoalProgressProps) {
+export default function GoalProgress({ transactions, selectedMonth, formatCurrency }: GoalProgressProps) {
+  const { goals } = useGoalsContext()
   const currentMonthGoals = goals.filter(goal => goal.month === selectedMonth)
 
   const calculateGoalProgress = (goal: Goal) => {

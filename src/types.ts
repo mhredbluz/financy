@@ -1,4 +1,5 @@
-export type TransactionType = 'income' | 'expense'
+﻿export type TransactionType = 'income' | 'expense'
+export type PaymentMethod = 'debit' | 'credit' | 'pix' | 'cash' | 'transfer'
 
 export interface Transaction {
   id: string
@@ -7,8 +8,9 @@ export interface Transaction {
   amount: number
   category: string
   note?: string
-  recurringId?: string // ID da recorrência que gerou esta transação
-  allocatedToGoal?: string // ID da meta recebendo alocação desta transação
+  paymentMethod?: PaymentMethod
+  recurringId?: string // ID da recorrÃªncia que gerou esta transaÃ§Ã£o
+  allocatedToGoal?: string // ID da meta recebendo alocaÃ§Ã£o desta transaÃ§Ã£o
 }
 
 export interface Budget {
@@ -45,7 +47,7 @@ export interface Goal {
   createdAt: string
   deadline?: string // YYYY-MM-DD
   allocatedAmount?: number // Quanto foi realmente alocado/destinado
-  linkedTransactions?: string[] // IDs das transações vinculadas
+  linkedTransactions?: string[] // IDs das transaÃ§Ãµes vinculadas
 }
 
 export interface BackupSnapshot {
@@ -69,3 +71,4 @@ export interface AppData {
   recurringTransactions?: RecurringTransaction[]
   integrations?: IntegrationSettings
 }
+

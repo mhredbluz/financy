@@ -1,4 +1,4 @@
-import { useAppContext } from '../context/AppContext'
+﻿import { useAppContext } from '../context/AppContext'
 
 const dayKey = (date: Date) => date.toISOString().slice(0, 10)
 
@@ -57,40 +57,86 @@ export default function GamificationPanel() {
     return points
   }, 0)
 
-  const monthBudgetPoints = currentMonthExpense <= monthlyChallengeBudget ? 100 : 0
-  const totalPoints = consistencyPoints + monthBudgetPoints + Math.min(200, monthsWithActivity * 10)
+  const monthBudgetPoints = currentMonthExpense <= monthlyChallengeBudget ? 150 : 0
+  const basePoints = consistencyPoints + monthBudgetPoints + Math.min(200, monthsWithActivity * 10)
+
+  // Leveling
+  const level = Math.max(1, Math.floor(basePoints / 200) + 1)
+  const levelFloor = (level - 1) * 200
+  const levelCeil = level * 200
+  const levelProgress = ((basePoints - levelFloor) / (levelCeil - levelFloor)) * 100
+
+  const streakBonus = Math.min(50, streak * 2)
+  const totalPoints = basePoints + streakBonus
+
+  // Weekly challenge (last 7 days)
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    return dayKey(d)
+  })
+  const weeklySpend = last7Days.reduce((sum, day) => sum + (expensesByDay[day] || 0), 0)
+  const weeklyBudget = dailyBudget * 7
+  const weeklyProgress = weeklyBudget > 0 ? Math.min(100, (1 - weeklySpend / weeklyBudget) * 100) : 0
+  const weeklyStatus = weeklySpend <= weeklyBudget ? 'Sob controle' : 'Estourado'
 
   const badges = [] as string[]
-  if (totalTransactions >= 100) badges.push('🏅 100 transações')
-  if (monthsWithActivity >= 6) badges.push('🥇 6 meses de controle')
-  if (streak >= 7) badges.push('🔥 Streak de 7 dias')
-  if (streak >= 30) badges.push('💎 Streak de 30 dias')
+  if (totalTransactions >= 50) badges.push('🏁 50 transações')
+  if (totalTransactions >= 200) badges.push('🏆 200 transações')
+  if (monthsWithActivity >= 3) badges.push('🥉 3 meses de controle')
+  if (monthsWithActivity >= 6) badges.push('🥈 6 meses de controle')
+  if (monthsWithActivity >= 12) badges.push('🥇 12 meses de controle')
+  if (streak >= 7) badges.push('🔥 Streak 7 dias')
+  if (streak >= 30) badges.push('💎 Streak 30 dias')
   if (currentMonthExpense <= monthlyChallengeBudget) badges.push('📉 Orçamento 80% ou menos')
 
   return (
     <section className="budget-card" style={{ marginTop: '1rem' }}>
-      <h2>Gamificação & Hábitos</h2>
+      <div className="reports-header">
+        <div>
+          <h2>Gamificação</h2>
+          <p className="reports-sub">Ganhos reais vêm da consistência. Veja seu progresso.</p>
+        </div>
+        <div className="pill">Nível {level}</div>
+      </div>
 
-      <div className="summary-grid">
-        <div>
-          <strong>Streak</strong>
-          <p>{streak} dias</p>
-          <small>Registros consecutivos</small>
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-label">Streak atual</div>
+          <div className="kpi-value">{streak} dias</div>
+          <div className="kpi-sub">Bônus: +{streakBonus} pts</div>
         </div>
-        <div>
-          <strong>Transações</strong>
-          <p>{totalTransactions}</p>
-          <small>Total acumulado</small>
+        <div className="kpi-card">
+          <div className="kpi-label">Pontos totais</div>
+          <div className="kpi-value">{totalPoints}</div>
+          <div className="kpi-sub">Base: {basePoints} pts</div>
         </div>
-        <div>
-          <strong>Meses ativos</strong>
-          <p>{monthsWithActivity}</p>
-          <small>com transações</small>
+        <div className="kpi-card">
+          <div className="kpi-label">Meses ativos</div>
+          <div className="kpi-value">{monthsWithActivity}</div>
+          <div className="kpi-sub">Consistência histórica</div>
         </div>
-        <div>
-          <strong>Pontos</strong>
-          <p>{totalPoints}</p>
-          <small>Consistência e orçamento</small>
+        <div className="kpi-card">
+          <div className="kpi-label">Transações</div>
+          <div className="kpi-value">{totalTransactions}</div>
+          <div className="kpi-sub">Total acumulado</div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: '1rem', background: 'rgba(30, 41, 59, 0.45)', borderRadius: '10px', padding: '0.9rem' }}>
+        <strong>Progresso de Nível</strong>
+        <p style={{ margin: '0.25rem 0' }}>{basePoints} / {levelCeil} pts</p>
+        <div style={{ marginTop: '0.5rem', width: '100%', height: '8px', background: 'var(--border)', borderRadius: '6px' }}>
+          <div style={{ width: `${Math.min(100, Math.max(0, levelProgress))}%`, height: '100%', background: 'var(--primary)', borderRadius: '6px' }} />
+        </div>
+      </div>
+
+      <div style={{ marginTop: '1rem', background: 'rgba(30, 41, 59, 0.45)', borderRadius: '10px', padding: '0.9rem' }}>
+        <strong>Desafio Semanal</strong>
+        <p>Gastos 7 dias: {weeklySpend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} / {weeklyBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <p>Status: {weeklyStatus}</p>
+        <div style={{ marginTop: '0.5rem', width: '100%', height: '8px', background: 'var(--border)', borderRadius: '6px' }}>
+          <div style={{ width: `${Math.min(100, Math.max(0, weeklyProgress))}%`, height: '100%', background: 'var(--info)', borderRadius: '6px' }} />
         </div>
       </div>
 
@@ -106,7 +152,7 @@ export default function GamificationPanel() {
       <div style={{ marginTop: '1rem' }}>
         <strong>Badges desbloqueadas</strong>
         {badges.length === 0 ? (
-          <p style={{ color: 'var(--text-weak)' }}>Nehuma ainda. Continue registrando!</p>
+          <p style={{ color: 'var(--text-weak)' }}>Nenhuma ainda. Continue registrando!</p>
         ) : (
           <ul style={{ paddingLeft: '1rem' }}>
             {badges.map((badge) => (<li key={badge}>{badge}</li>))}
@@ -115,7 +161,7 @@ export default function GamificationPanel() {
       </div>
 
       <div style={{ marginTop: '1rem', color: 'var(--text-medium)' }}>
-        Dica: Registre transações diariamente e mantenha o limite mensal abaixo de 80% para ganhar pontos extras.
+        Próximo objetivo: manter 7 dias seguidos abaixo do limite diário para bônus extra.
       </div>
     </section>
   )

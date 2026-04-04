@@ -1,10 +1,13 @@
 import { createContext, useContext } from 'react'
-import type { Transaction } from '../types'
+import type { Transaction, RecurringTransaction } from '../types'
 
 interface AppContextValue {
   transactions: Transaction[]
   selectedMonth: string
+  selectedDate: string
   budgetLimit: number
+  recurringTransactions: RecurringTransaction[]
+  setRecurringTransactions: (next: RecurringTransaction[]) => void
 }
 
 const AppContext = createContext<AppContextValue | null>(null)

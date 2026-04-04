@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import type { FormEvent } from 'react'
-import type { TransactionType } from '../types'
+import type { TransactionType, PaymentMethod } from '../types'
 import { getCategorySuggestions } from '../utils/categorySuggester'
 
 interface TransactionFormProps {
-  form: { type: TransactionType; date: string; amount: number; category: string; note: string }
-  setForm: React.Dispatch<React.SetStateAction<{ type: TransactionType; date: string; amount: number; category: string; note: string }>>
+  form: { type: TransactionType; date: string; amount: number; category: string; note: string; paymentMethod: PaymentMethod }
+  setForm: React.Dispatch<React.SetStateAction<{ type: TransactionType; date: string; amount: number; category: string; note: string; paymentMethod: PaymentMethod }>>
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   isEditing: boolean
   onCancelEdit: () => void
@@ -128,6 +128,19 @@ export default function TransactionForm({ form, setForm, onSubmit, isEditing, on
           >
             <option value="expense">Despesa</option>
             <option value="income">Receita</option>
+          </select>
+        </label>
+        <label>
+          Meio de pagamento
+          <select
+            value={form.paymentMethod}
+            onChange={(e) => setForm((old) => ({ ...old, paymentMethod: e.target.value as PaymentMethod }))}
+          >
+            <option value="debit">Débito</option>
+            <option value="credit">Crédito</option>
+            <option value="pix">PIX</option>
+            <option value="cash">Dinheiro</option>
+            <option value="transfer">Transferência</option>
           </select>
         </label>
         <label>

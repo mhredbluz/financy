@@ -1,7 +1,7 @@
 import { useAppContext } from '../context/AppContext'
 
 export default function BudgetAlerts() {
-  const { transactions, selectedMonth, budgetLimit } = useAppContext()
+  const { transactions, selectedMonth, selectedDate, budgetLimit } = useAppContext()
   const currentMonthTxs = transactions.filter(tx => tx.date.startsWith(selectedMonth))
   const expenses = currentMonthTxs.filter(tx => tx.type === 'expense')
   const totalExpenses = expenses.reduce((sum, tx) => sum + tx.amount, 0)
@@ -60,7 +60,7 @@ export default function BudgetAlerts() {
     }
 
     // Análise de frequência de gastos
-    const today = new Date()
+    const today = new Date(selectedDate)
     const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().slice(0, 7)
 
     const lastMonthTxs = transactions.filter(tx => tx.date.startsWith(lastMonth) && tx.type === 'expense')

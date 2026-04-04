@@ -1,4 +1,4 @@
-import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot, IntegrationSettings } from './types'
+﻿import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot, IntegrationSettings } from './types'
 
 const STORAGE_KEY = 'financy-app-data'
 const BACKUP_HISTORY_KEY = 'financy-backup-history'
@@ -15,10 +15,52 @@ export function loadAppData(): AppData {
       saveAppData(testData as AppData)
       return testData as AppData
     }
-    return JSON.parse(raw) as AppData
+    const data = JSON.parse(raw) as AppData
+
+    // Migrar metas antigas salvas fora do app data
+    if (!data.goals) {
+      try {
+        const legacyGoalsRaw = localStorage.getItem('financy-custom-goals')
+        if (legacyGoalsRaw) {
+          const legacyGoals = JSON.parse(legacyGoalsRaw) as Goal[]
+          data.goals = legacyGoals
+          saveAppData(data, false)
+          localStorage.removeItem('financy-custom-goals')
+        }
+      } catch {
+        // ignora erro de migração
+      }
+    }
+
+    // Migrar recorrÃªncias antigas salvas fora do app data
+    if (!data.recurringTransactions) {
+      try {
+        const legacyRecurringRaw = localStorage.getItem('financy-recurring-transactions')
+        if (legacyRecurringRaw) {
+          const legacyRecurring = JSON.parse(legacyRecurringRaw) as RecurringTransaction[]
+          data.recurringTransactions = legacyRecurring
+          saveAppData(data, false)
+          localStorage.removeItem('financy-recurring-transactions')
+        }
+      } catch {
+        // ignora erro de migraÃ§Ã£o
+      }
+    }
+
+    return data
   } catch {
     return defaultData
   }
+}
+
+const parseLocalDate = (iso: string) => {
+  const [year, month, day] = iso.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const toLocalISODate = (date: Date) => {
+  const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return d.toISOString().slice(0, 10)
 }
 
 function appendBackup(data: AppData, label?: string) {
@@ -67,7 +109,7 @@ export function setBudget(month: string, limit: number) {
   saveAppData(data)
 }
 
-// Funções para gerenciar metas
+// FunÃ§Ãµes para gerenciar metas
 export function addGoal(goal: Goal) {
   const data = loadAppData()
   if (!data.goals) data.goals = []
@@ -87,11 +129,6 @@ export function deleteGoal(goalId: string) {
   if (!data.goals) return
   data.goals = data.goals.filter((goal) => goal.id !== goalId)
   saveAppData(data)
-}
-
-export function getGoalsForMonth(month: string): Goal[] {
-  const data = loadAppData()
-  return data.goals?.filter((goal) => goal.month === month) || []
 }
 
 export function getIntegrationSettings() {
@@ -131,12 +168,12 @@ export function importAppData(raw: string): { success: boolean; message: string 
   try {
     const parsed = JSON.parse(raw) as AppData
     if (!parsed || !Array.isArray(parsed.transactions)) {
-      return { success: false, message: 'Formato inválido. Esperado objeto AppData com transactions[].' }
+      return { success: false, message: 'Formato invÃ¡lido. Esperado objeto AppData com transactions[].' }
     }
     saveAppData(parsed)
     return { success: true, message: 'Dados importados com sucesso.' }
   } catch {
-    return { success: false, message: 'Erro ao parsear JSON. Verifique o conteúdo.' }
+    return { success: false, message: 'Erro ao parsear JSON. Verifique o conteÃºdo.' }
   }
 }
 
@@ -155,7 +192,7 @@ export function prepareTransactionsCSV(data: AppData): string {
   return [headers.join(','), ...escaped].join('\n')
 }
 
-// Funções para gerenciar recorrências
+// FunÃ§Ãµes para gerenciar recorrÃªncias
 export function addRecurringTransaction(recurring: RecurringTransaction) {
   const data = loadAppData()
   if (!data.recurringTransactions) data.recurringTransactions = []
@@ -188,15 +225,17 @@ export function generateRecurringTransactions() {
   const data = loadAppData()
   const recurring = getActiveRecurringTransactions()
   const today = new Date()
+  const todayISO = toLocalISODate(today)
   const newTransactions: Transaction[] = []
 
   recurring.forEach((rec) => {
-    const lastGenerated = rec.lastGenerated ? new Date(rec.lastGenerated) : new Date(rec.startDate)
-    const endDate = rec.endDate ? new Date(rec.endDate) : null
+    const lastGenerated = rec.lastGenerated ? parseLocalDate(rec.lastGenerated) : parseLocalDate(rec.startDate)
+    const endDate = rec.endDate ? parseLocalDate(rec.endDate) : null
 
     let nextDate = new Date(lastGenerated)
+    let generatedForRec = false
 
-    // Calcula a próxima data baseada no tipo de recorrência
+    // Calcula a prÃ³xima data baseada no tipo de recorrÃªncia
     switch (rec.recurrenceType) {
       case 'daily':
         nextDate.setDate(nextDate.getDate() + 1)
@@ -212,27 +251,28 @@ export function generateRecurringTransactions() {
         break
     }
 
-    // Gera transações até hoje (ou data limite)
+    // Gera transaÃ§Ãµes atÃ© hoje (ou data limite)
     while (nextDate <= today && (!endDate || nextDate <= endDate)) {
-      // Verifica se já existe uma transação para esta data e recorrência
+      // Verifica se jÃ¡ existe uma transaÃ§Ã£o para esta data e recorrÃªncia
       const existingTx = data.transactions.find(tx =>
         tx.recurringId === rec.id &&
-        tx.date === nextDate.toISOString().slice(0, 10)
+        tx.date === toLocalISODate(nextDate)
       )
 
       if (!existingTx) {
         newTransactions.push({
           id: crypto.randomUUID(),
-          date: nextDate.toISOString().slice(0, 10),
+          date: toLocalISODate(nextDate),
           type: rec.type,
           amount: rec.amount,
           category: rec.category,
           note: rec.note,
           recurringId: rec.id
         })
+        generatedForRec = true
       }
 
-      // Calcula próxima data
+      // Calcula prÃ³xima data
       switch (rec.recurrenceType) {
         case 'daily':
           nextDate.setDate(nextDate.getDate() + 1)
@@ -250,15 +290,16 @@ export function generateRecurringTransactions() {
     }
 
     // Atualiza lastGenerated
-    if (newTransactions.length > 0) {
-      const updatedRec = { ...rec, lastGenerated: today.toISOString().slice(0, 10) }
+    if (generatedForRec) {
+      const updatedRec = { ...rec, lastGenerated: todayISO }
       updateRecurringTransaction(updatedRec)
     }
   })
 
-  // Adiciona as novas transações
+  // Adiciona as novas transaÃ§Ãµes
   newTransactions.forEach(tx => data.transactions.push(tx))
-  saveAppData(data)
+  saveAppData(data, false)
 
   return newTransactions.length
 }
+

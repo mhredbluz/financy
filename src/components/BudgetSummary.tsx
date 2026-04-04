@@ -1,109 +1,114 @@
 ﻿import type { DashboardSummary } from '../api/dashboard'
 
 interface BudgetSummaryProps {
-  month: string
-  monthOptions: string[]
-  selectedMonth: string
-  onMonthChange: (month: string) => void
-  onSaveBudget: () => void
+  selectedDate: string
   summary: DashboardSummary
 }
 
 export default function BudgetSummary({
-  month,
-  monthOptions,
-  selectedMonth,
-  onMonthChange,
-  onSaveBudget,
+  selectedDate,
   summary,
 }: BudgetSummaryProps) {
   const saldoBase = summary.saldo
+  const saldoReal = summary.saldoReal
   const valorInvestir = saldoBase * 0.3
   const valorDisponivel = saldoBase * 0.7
+  const valorInvestirReal = saldoReal * 0.3
+  const valorDisponivelReal = saldoReal * 0.7
+  const parseLocalDate = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+  const monthLabel = parseLocalDate(selectedDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
   return (
-    <section className="budget-card">
-      <h2>Orçamento do mês ({month})</h2>
-      <label>
-        Seleção de mês
-        <select value={selectedMonth} onChange={(e) => onMonthChange(e.target.value)}>
-          {monthOptions.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Limite mensal real (70% do saldo)
-        <p>{valorDisponivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-        <input
-          type="number"
-          value={Number.isFinite(valorDisponivel) ? valorDisponivel : 0}
-          disabled
-        />
-      </label>
-      <button onClick={onSaveBudget}>Salvar orçamento</button>
+    <section className="budget-card budget-summary">
+      <div className="budget-header">
+        <div>
+          <h2>Resumo do mês</h2>
+          <p className="budget-sub">Saldo real, base diária e status do mês.</p>
+        </div>
+        <div className="pill">{monthLabel}</div>
+      </div>
 
-      <div className="summary-grid">
-        <div>
-          <strong>Receita</strong>
-          <p>{summary.totalReceita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+      <div className="summary-kpi-grid">
+        <div className="summary-kpi-card highlight">
+          <div className="summary-kpi-label">Limite previsto (70%)</div>
+          <div className="summary-kpi-value">{valorDisponivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-sub">
+            Investir (30%): {valorInvestir.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            <span> • Real investir: {valorInvestirReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
+          <div className="summary-kpi-sub">
+            Real limite (70%): {valorDisponivelReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </div>
         </div>
-        <div>
-          <strong>Despesas</strong>
-          <p>{summary.totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Receita prevista</div>
+          <div className="summary-kpi-value">{summary.totalReceita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-sub">
+            Real: {summary.totalReceitaReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            <span> • Recorrências: {summary.recorrenciaReceita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
         </div>
-        <div>
-          <strong>Saldo</strong>
-          <p>{summary.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Despesas previstas</div>
+          <div className="summary-kpi-value">{summary.totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-sub">
+            Real: {summary.totalDespesasReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            <span> • Recorrências: {summary.recorrenciaDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
         </div>
-        <div>
-          <strong>Investir (30%)</strong>
-          <p>{valorInvestir.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Saldo previsto</div>
+          <div className="summary-kpi-value">{summary.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-sub">
+            Real: {summary.saldoReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </div>
         </div>
-        <div>
-          <strong>Dias restantes</strong>
-          <p>{summary.diasRestantes}</p>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Dias restantes</div>
+          <div className="summary-kpi-value">{summary.diasRestantes}</div>
         </div>
-        <div>
-          <strong>Disponível p/ dia (base)</strong>
-          <p style={{ color: summary.orcamentoDiario < 0 ? '#c0392b' : '#27ae60' }}>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Base diária</div>
+          <div className={`summary-kpi-value ${summary.orcamentoDiario < 0 ? 'down' : 'up'}`}>
             {summary.orcamentoDiario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
+          </div>
         </div>
-        <div>
-          <strong>Status</strong>
-          <p>{summary.status}</p>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Status</div>
+          <div className="summary-kpi-value">{summary.status}</div>
         </div>
       </div>
 
-      <div className="summary-grid">
-        <div>
-          <strong>Gasto hoje</strong>
-          <p>{summary.gastoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+      <div className="summary-section-title">Hoje</div>
+      <div className="summary-kpi-grid">
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Gasto hoje</div>
+          <div className="summary-kpi-value">{summary.gastoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
         </div>
-        <div>
-          <strong>Orçamento hoje (carry)</strong>
-          <p>{summary.orcamentoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Orçamento hoje (carry)</div>
+          <div className="summary-kpi-value">{summary.orcamentoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
         </div>
-        <div>
-          <strong>Diferença ontem</strong>
-          <p style={{ color: summary.diferencaOntem >= 0 ? '#27ae60' : '#c0392b' }}>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Diferença ontem</div>
+          <div className={`summary-kpi-value ${summary.diferencaOntem >= 0 ? 'up' : 'down'}`}>
             {summary.diferencaOntem.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
+          </div>
         </div>
-        <div>
-          <strong>Diferença hoje</strong>
-          <p style={{ color: summary.diferencaHoje >= 0 ? '#27ae60' : '#c0392b' }}>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Diferença hoje</div>
+          <div className={`summary-kpi-value ${summary.diferencaHoje >= 0 ? 'up' : 'down'}`}>
             {summary.diferencaHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
+          </div>
         </div>
-        <div>
-          <strong>Status hoje</strong>
-          <p style={{ color: summary.statusHoje === 'OK' ? '#27ae60' : '#c0392b' }}>
+        <div className="summary-kpi-card">
+          <div className="summary-kpi-label">Status hoje</div>
+          <div className={`summary-kpi-value ${summary.statusHoje === 'OK' ? 'up' : 'down'}`}>
             {summary.statusHoje}
-          </p>
+          </div>
         </div>
       </div>
     </section>
