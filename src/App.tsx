@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState, useEffect } from 'react'
 import './App.css'
 import type { FormEvent } from 'react'
-import type { Transaction, TransactionType, RecurringTransaction, Goal } from './types'
+import type { Transaction, TransactionType, RecurringTransaction, Goal, Budget } from './types'
 import TodayCard from './components/TodayCard'
 import BudgetSummary from './components/BudgetSummary'
 import VisualReports from './components/VisualReports'
@@ -145,9 +145,10 @@ function App() {
   const dashboardSummary: DashboardSummary = useMemo(
     () => {
       const now = parseLocalDate(selectedDate)
-      return getDashboardSummary(transactions, recurringTransactions, budgetLimit, now)
+      const budget: Budget = { month: selectedMonth, limit: budgetLimit }
+      return getDashboardSummary(transactions, recurringTransactions, budget, now)
     },
-    [transactions, recurringTransactions, budgetLimit, selectedDate],
+    [transactions, recurringTransactions, budgetLimit, selectedDate, selectedMonth],
   )
 
   const categorySummary: CategorySummaryItem[] = useMemo(
@@ -156,8 +157,8 @@ function App() {
   )
 
   const todayISO = toLocalISODate()
-  const status = dashboardSummary.saldo < 0 ? 'danger' : 'ok'
-  const statusHoje = dashboardSummary.statusHoje.toLowerCase() === 'ok' ? 'ok' : 'danger'
+  const status = ['NEGATIVO', 'RISCO'].includes(dashboardSummary.statusMes) ? 'danger' : 'ok'
+  const statusHoje = ['ESTOURO', 'BLOQUEADO'].includes(dashboardSummary.statusDia) ? 'danger' : 'ok'
 
   const handleQuickExpense = () => {
     setForm((f) => ({
@@ -173,6 +174,9 @@ function App() {
     if (!form.amount || !form.category) return
 
     if (editingTxId) {
+      const existingTx = transactions.find((tx) => tx.id === editingTxId)
+      if (!existingTx) return
+
       const updatedTx: Transaction = {
         id: editingTxId,
         date: form.date,
@@ -182,6 +186,9 @@ function App() {
         note: form.note,
         paymentMethod: form.paymentMethod,
         allocatedToGoal: form.allocatedToGoal,
+        status: existingTx.status,
+        origin: existingTx.origin,
+        recurringId: existingTx.recurringId,
       }
 
       updateTransaction(updatedTx)
@@ -216,6 +223,8 @@ function App() {
       note: form.note,
       paymentMethod: form.paymentMethod,
       allocatedToGoal: form.allocatedToGoal,
+      status: 'confirmed',
+      origin: 'manual',
     }
 
     addTransaction(tx)
@@ -267,6 +276,8 @@ function App() {
         category: 'Cartão',
         note: item.description,
         paymentMethod: 'credit',
+        status: 'confirmed',
+        origin: 'imported',
       }
       addTransaction(tx)
     })
@@ -290,7 +301,7 @@ function App() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
-  const appContextValue = { transactions, selectedMonth, selectedDate, budgetLimit, recurringTransactions, setRecurringTransactions }
+  const appContextValue = { transactions, setTransactions, selectedMonth, selectedDate, budgetLimit, recurringTransactions, setRecurringTransactions }
 
   const goalsContextValue = { goals, setGoals }
 
@@ -366,7 +377,7 @@ function App() {
             <section className={`app-status ${status}`}>
               <div>
                 <strong>💰 Saldo</strong>
-                <p>{formatCurrency(dashboardSummary.saldo)}</p>
+                <p>{formatCurrency(dashboardSummary.saldoPrevisto)}</p>
               </div>
               <div>
                 <strong>📅 Dias restantes</strong>
@@ -374,7 +385,7 @@ function App() {
               </div>
               <div>
                 <strong>🔥 Hoje pode gastar</strong>
-                <p>{formatCurrency(Math.max(0, dashboardSummary.orcamentoDiario))}</p>
+                <p>{formatCurrency(Math.max(0, dashboardSummary.orcamentoHoje))}</p>
               </div>
               <div>
                 <strong>💸 Gasto hoje</strong>

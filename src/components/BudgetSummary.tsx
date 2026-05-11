@@ -9,12 +9,10 @@ export default function BudgetSummary({
   selectedDate,
   summary,
 }: BudgetSummaryProps) {
-  const saldoBase = summary.saldo
-  const saldoReal = summary.saldoReal
-  const valorInvestir = saldoBase * 0.3
-  const valorDisponivel = saldoBase * 0.7
-  const valorInvestirReal = saldoReal * 0.3
-  const valorDisponivelReal = saldoReal * 0.7
+  const valorInvestir = summary.reservaInvestimento
+  const baseDefinida = summary.baseMensal
+  const baseRestante = summary.baseRestante
+  const savingsPct = Math.round(summary.savingsRate * 100)
   const parseLocalDate = (iso: string) => {
     const [year, month, day] = iso.split('-').map(Number)
     return new Date(year, month - 1, day)
@@ -33,35 +31,35 @@ export default function BudgetSummary({
 
       <div className="summary-kpi-grid">
         <div className="summary-kpi-card highlight">
-          <div className="summary-kpi-label">Limite previsto (70%)</div>
-          <div className="summary-kpi-value">{valorDisponivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-          <div className="summary-kpi-sub">
-            Investir (30%): {valorInvestir.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            <span> • Real investir: {valorInvestirReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          <div className="summary-kpi-label">Base restante do mês</div>
+          <div className={`summary-kpi-value ${baseRestante <= 0 ? 'down' : ''}`}>
+            {baseRestante.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </div>
           <div className="summary-kpi-sub">
-            Real limite (70%): {valorDisponivelReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            Reservar ({savingsPct}%): {valorInvestir.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            <span> • Base bruta: {summary.baseMensalBruta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
+          <div className="summary-kpi-sub">
+            Base definida: {baseDefinida.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </div>
         </div>
         <div className="summary-kpi-card">
           <div className="summary-kpi-label">Receita prevista</div>
-          <div className="summary-kpi-value">{summary.totalReceita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-value">{summary.receitaPrevista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
           <div className="summary-kpi-sub">
-            Real: {summary.totalReceitaReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            <span> • Recorrências: {summary.recorrenciaReceita.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            Real: {summary.receitaReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </div>
         </div>
         <div className="summary-kpi-card">
           <div className="summary-kpi-label">Despesas previstas</div>
-          <div className="summary-kpi-value">{summary.totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-value">{summary.despesaPrevista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
           <div className="summary-kpi-sub">
-            Real: {summary.totalDespesasReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            <span> • Recorrências: {summary.recorrenciaDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            Real: {summary.despesaReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </div>
         </div>
         <div className="summary-kpi-card">
           <div className="summary-kpi-label">Saldo previsto</div>
-          <div className="summary-kpi-value">{summary.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          <div className="summary-kpi-value">{summary.saldoPrevisto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
           <div className="summary-kpi-sub">
             Real: {summary.saldoReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </div>
@@ -72,13 +70,13 @@ export default function BudgetSummary({
         </div>
         <div className="summary-kpi-card">
           <div className="summary-kpi-label">Base diária</div>
-          <div className={`summary-kpi-value ${summary.orcamentoDiario < 0 ? 'down' : 'up'}`}>
+          <div className={`summary-kpi-value ${summary.orcamentoDiario <= 0 ? 'down' : 'up'}`}>
             {summary.orcamentoDiario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </div>
         </div>
         <div className="summary-kpi-card">
           <div className="summary-kpi-label">Status</div>
-          <div className="summary-kpi-value">{summary.status}</div>
+          <div className="summary-kpi-value">{summary.statusMes}</div>
         </div>
       </div>
 
@@ -106,8 +104,8 @@ export default function BudgetSummary({
         </div>
         <div className="summary-kpi-card">
           <div className="summary-kpi-label">Status hoje</div>
-          <div className={`summary-kpi-value ${summary.statusHoje === 'OK' ? 'up' : 'down'}`}>
-            {summary.statusHoje}
+          <div className={`summary-kpi-value ${summary.statusDia === 'DENTRO' ? 'up' : 'down'}`}>
+            {summary.statusDia}
           </div>
         </div>
       </div>

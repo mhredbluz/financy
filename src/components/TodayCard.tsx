@@ -1,7 +1,7 @@
 ﻿import type { DashboardSummary } from '../api/dashboard'
 import { useAppContext } from '../context/AppContext'
 import { useGoalsContext } from '../context/GoalsContext'
-import { isDueOn } from '../utils/recurrence'
+import { hasMatchingTransaction, isDueOn } from '../utils/recurrence'
 
 type CalendarView = 'day' | 'week' | 'month' | 'year'
 
@@ -82,7 +82,8 @@ export default function TodayCard({ summary, selectedDate, calendarView, onDateC
 
   const recurringDueToday = recurringTransactions.filter((rec) => {
     if (!rec.isActive) return false
-    return isDueOn(rec, selectedDate)
+    if (!isDueOn(rec, selectedDate)) return false
+    return !hasMatchingTransaction(rec, transactions, selectedDate)
   })
 
   const selectedMonth = selectedDate.slice(0, 7)

@@ -1,4 +1,4 @@
-﻿import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot, IntegrationSettings } from './types'
+﻿import type { AppData, Transaction, Goal, RecurringTransaction, BackupSnapshot, IntegrationSettings, TransactionOrigin, TransactionStatus } from './types'
 
 const STORAGE_KEY = 'financy-app-data'
 const BACKUP_HISTORY_KEY = 'financy-backup-history'
@@ -12,8 +12,10 @@ export function loadAppData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
       // Carregar dados de teste se não houver dados salvos
-      saveAppData(testData as AppData)
-      return testData as AppData
+      const seeded = testData as AppData
+      const normalized = { ...seeded, transactions: normalizeTransactions(seeded.transactions) }
+      saveAppData(normalized)
+      return normalized
     }
     const data = JSON.parse(raw) as AppData
 
@@ -47,12 +49,20 @@ export function loadAppData(): AppData {
       }
     }
 
+    data.transactions = normalizeTransactions(data.transactions)
     return data
   } catch {
     return defaultData
   }
 }
 
+function normalizeTransactions(transactions: Transaction[]): Transaction[] {
+  return transactions.map((tx) => {
+    const origin: TransactionOrigin = tx.origin ?? (tx.recurringId ? 'recurrence' : 'manual')
+    const status: TransactionStatus = tx.status ?? 'confirmed'
+    return { ...tx, origin, status }
+  })
+}
 const parseLocalDate = (iso: string) => {
   const [year, month, day] = iso.split('-').map(Number)
   return new Date(year, month - 1, day)
@@ -170,6 +180,7 @@ export function importAppData(raw: string): { success: boolean; message: string 
     if (!parsed || !Array.isArray(parsed.transactions)) {
       return { success: false, message: 'Formato invÃ¡lido. Esperado objeto AppData com transactions[].' }
     }
+    parsed.transactions = normalizeTransactions(parsed.transactions)
     saveAppData(parsed)
     return { success: true, message: 'Dados importados com sucesso.' }
   } catch {
@@ -178,7 +189,7 @@ export function importAppData(raw: string): { success: boolean; message: string 
 }
 
 export function prepareTransactionsCSV(data: AppData): string {
-  const headers = ['id', 'date', 'type', 'amount', 'category', 'note', 'recurringId']
+  const headers = ['id', 'date', 'type', 'amount', 'category', 'note', 'paymentMethod', 'status', 'origin', 'recurringId']
   const rows = data.transactions.map((tx) => [
     tx.id,
     tx.date,
@@ -186,6 +197,9 @@ export function prepareTransactionsCSV(data: AppData): string {
     tx.amount.toFixed(2),
     tx.category,
     tx.note || '',
+    tx.paymentMethod || '',
+    tx.status,
+    tx.origin,
     tx.recurringId || ''
   ])
   const escaped = rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
@@ -267,6 +281,8 @@ export function generateRecurringTransactions() {
           amount: rec.amount,
           category: rec.category,
           note: rec.note,
+          status: 'planned',
+          origin: 'recurrence',
           recurringId: rec.id
         })
         generatedForRec = true
@@ -302,4 +318,10 @@ export function generateRecurringTransactions() {
 
   return newTransactions.length
 }
+
+
+
+
+
+
 

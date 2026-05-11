@@ -1,5 +1,7 @@
 ﻿export type TransactionType = 'income' | 'expense'
 export type PaymentMethod = 'debit' | 'credit' | 'pix' | 'cash' | 'transfer'
+export type TransactionStatus = 'confirmed' | 'planned' | 'canceled'
+export type TransactionOrigin = 'manual' | 'imported' | 'recurrence'
 
 export interface Transaction {
   id: string
@@ -9,6 +11,8 @@ export interface Transaction {
   category: string
   note?: string
   paymentMethod?: PaymentMethod
+  status: TransactionStatus
+  origin: TransactionOrigin
   recurringId?: string // ID da recorrÃªncia que gerou esta transaÃ§Ã£o
   allocatedToGoal?: string // ID da meta recebendo alocaÃ§Ã£o desta transaÃ§Ã£o
 }
@@ -16,6 +20,11 @@ export interface Transaction {
 export interface Budget {
   month: string // YYYY-MM
   limit: number
+  basePolicy?: 'fixed' | 'percent_of_income'
+  baseFixed?: number
+  basePercent?: number
+  savingsRate?: number
+  carryOverMode?: 'off' | 'daily_simple'
 }
 
 export type RecurrenceType = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -71,4 +80,6 @@ export interface AppData {
   recurringTransactions?: RecurringTransaction[]
   integrations?: IntegrationSettings
 }
+
+
 

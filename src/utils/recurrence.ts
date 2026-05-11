@@ -1,4 +1,4 @@
-import type { RecurringTransaction } from '../types'
+import type { RecurringTransaction, Transaction } from '../types'
 
 const parseLocalDate = (iso: string) => {
   const [year, month, day] = iso.split('-').map(Number)
@@ -46,6 +46,26 @@ export function isDueOn(recurring: RecurringTransaction, isoDate: string): boole
     default:
       return false
   }
+}
+
+const normalizeText = (value?: string) =>
+  (value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+const amountsEqual = (a: number, b: number) => Math.abs(a - b) < 0.01
+
+export function matchesRecurringOnDate(recurring: RecurringTransaction, tx: Transaction, isoDate: string): boolean {
+  if (tx.date !== isoDate) return false
+  if (tx.type !== recurring.type) return false
+  if (!amountsEqual(tx.amount, recurring.amount)) return false
+  if (normalizeText(tx.category) !== normalizeText(recurring.category)) return false
+  return true
+}
+
+export function hasMatchingTransaction(recurring: RecurringTransaction, transactions: Transaction[], isoDate: string): boolean {
+  return transactions.some((tx) => {
+    if (tx.status === 'canceled') return false
+    return matchesRecurringOnDate(recurring, tx, isoDate)
+  })
 }
 
 export function getNextDueFrom(recurring: RecurringTransaction, fromIso: string): string | null {

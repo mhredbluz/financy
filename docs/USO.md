@@ -1,4 +1,4 @@
-# Financy — Guia Rápido de Uso
+﻿# Financy — Guia Rápido de Uso
 
 Este documento resume as principais funcionalidades do app. É uma visão estrutural; podemos aprofundar cada área depois.
 
@@ -87,6 +87,81 @@ O app sinaliza:
 - Estouro de limite diário
 - Recorrências próximas
 - Status de orçamento mensal
+
+## Exemplos Práticos (Problemas Reais)
+### 1) “Sempre estouro o orçamento antes do fim do mês”
+Objetivo: entender o limite diário e evitar estourar.
+Como usar:
+- No card “Hoje”, veja o **Limite diário**.
+- Se estourar um dia, o carry-over reduz o limite do dia seguinte.
+- Ajuste o **orçamento mensal** até o limite diário ficar realista.
+
+Exemplo:
+- Saldo previsto do mês: R$ 2.100
+- Dias restantes: 30
+- Limite diário: R$ 70
+- Gastou R$ 50 no Dia 1 → sobra +R$ 20
+- Dia 2: limite = R$ 70 + R$ 20 = R$ 90
+
+### 2) “Tenho gastos fixos e quero prever o mês todo”
+Objetivo: ver previsões reais considerando recorrências.
+Como usar:
+- Cadastre recorrências (salário, aluguel, assinaturas).
+- No **Resumo do mês**, compare:
+  - Previsto (inclui recorrências)
+  - Real (lançamentos feitos)
+
+Exemplo:
+- Salário mensal: R$ 3.500
+- Aluguel: R$ 1.200
+- Assinaturas: R$ 120
+Resumo previsto já vai mostrar tudo isso mesmo sem lançamentos reais.
+
+### 3) “Quero controlar gastos por categoria”
+Objetivo: ver onde o dinheiro vai.
+Como usar:
+- No cadastro de transações, use categorias consistentes.
+- Em Transações, abra “Agregação por categoria”.
+- No relatório visual, veja a distribuição.
+
+Exemplo:
+- Alimentação: R$ 800
+- Transporte: R$ 300
+- Lazer: R$ 200
+-> O app mostra a categoria mais pesada do mês.
+
+### 4) “Tenho cartão de crédito e não sei lançar”
+Objetivo: registrar compras no crédito corretamente.
+Como usar:
+- Importe a fatura no menu **Cartões**.
+- Cada compra vira um lançamento de despesa no crédito.
+- O pagamento da fatura não entra como gasto novo.
+
+Exemplo:
+- Fatura: R$ 650 (10 compras)
+-> Você importa e o app cria 10 lançamentos.
+
+### 5) “Quero guardar dinheiro todo mês”
+Objetivo: criar metas realistas.
+Como usar:
+- Crie uma meta de poupança ou meta mensal.
+- O card “Hoje” mostra metas pendentes no mês.
+- Lance transferências para metas (quando aplicável).
+
+Exemplo:
+- Meta: “Guardar R$ 500 até o fim do mês”
+-> O app mostra o quanto falta para completar.
+
+### 6) “Quero saber se estou gastando demais hoje”
+Objetivo: decisão rápida no dia.
+Como usar:
+- Veja “Gasto hoje” e “Diferença hoje” no card Hoje.
+- Se a diferença for negativa, pare gastos extras.
+
+Exemplo:
+- Orçamento hoje: R$ 60
+- Gasto hoje: R$ 75
+-> Diferença hoje = -R$ 15 (estouro)
 
 ---
 

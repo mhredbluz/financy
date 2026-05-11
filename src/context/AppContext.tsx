@@ -3,6 +3,7 @@ import type { Transaction, RecurringTransaction } from '../types'
 
 interface AppContextValue {
   transactions: Transaction[]
+  setTransactions: (next: Transaction[]) => void
   selectedMonth: string
   selectedDate: string
   budgetLimit: number

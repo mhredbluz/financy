@@ -1,34 +1,18 @@
-﻿import type { Transaction, RecurringTransaction } from '../types'
+﻿import type { Transaction, RecurringTransaction, Budget } from '../types'
 import { suggestCategory } from '../utils/categorySuggester'
-import { calcSaldoDisponivel, calcLimiteDiarioBase, calcLimiteHoje } from '../domain/budget'
+import type { DashboardSummaryDTO } from '../domain/summary/types'
+import { calcMonthlyTotals } from '../domain/summary/realPlanned'
+import { calcBaseMensal, calcBaseMensalBruta } from '../domain/budgets/policy'
+import { calcDailyBudget } from '../domain/summary/dailyBudget'
+import { calcMonthStatus } from '../domain/summary/monthStatus'
+import { projectRecurrencesForMonth } from '../domain/recurrences/projection'
+import { isActive, isConfirmed } from '../domain/transactions/filters'
 
-export interface DashboardSummary {
-  totalReceitaReal: number
-  totalDespesasReal: number
-  saldoReal: number
-  recorrenciaReceita: number
-  recorrenciaDespesas: number
-  totalReceita: number
-  totalDespesas: number
-  saldo: number
-  diasRestantes: number
-  orcamentoDiario: number
-  status: 'OK' | 'ALERTA' | 'PERIGO'
-  gastoHoje: number
-  orcamentoHoje: number
-  diferencaHoje: number
-  diferencaOntem: number
-  statusHoje: 'OK' | 'ESTOURO'
-}
+export type DashboardSummary = DashboardSummaryDTO
 
 export interface CategorySummaryItem {
   categoria: string
   total: number
-}
-
-const parseLocalDate = (iso: string) => {
-  const [year, month, day] = iso.split('-').map(Number)
-  return new Date(year, month - 1, day)
 }
 
 const toLocalISODate = (date: Date) => {
@@ -42,170 +26,114 @@ function getMonthKey(date: Date): string {
   return `${year}-${month}`
 }
 
-function getRecurringProjectionForMonth(
-  recurringTransactions: RecurringTransaction[],
-  transactions: Transaction[],
-  now: Date,
-) {
-  const year = now.getFullYear()
-  const monthIndex = now.getMonth()
-  const monthKey = getMonthKey(now)
-  const lastDay = new Date(year, monthIndex + 1, 0).getDate()
-  const existingRecurringSet = new Set(
-    transactions
-      .filter((tx) => tx.recurringId)
-      .map((tx) => `${tx.recurringId}|${tx.date}`),
-  )
-
-  let recurringIncomeMissing = 0
-  let recurringExpenseMissing = 0
-
-  recurringTransactions
-    .filter((rec) => rec.isActive)
-    .forEach((rec) => {
-      for (let day = 1; day <= lastDay; day += 1) {
-        const iso = `${monthKey}-${String(day).padStart(2, '0')}`
-        const target = parseLocalDate(iso)
-        const start = parseLocalDate(rec.startDate)
-        const end = rec.endDate ? parseLocalDate(rec.endDate) : null
-
-        if (target < start) continue
-        if (end && target > end) continue
-
-        const targetY = target.getFullYear()
-        const targetM = target.getMonth()
-        const targetD = target.getDate()
-
-        const startY = start.getFullYear()
-        const startM = start.getMonth()
-        const startD = start.getDate()
-
-        let occurs = false
-        switch (rec.recurrenceType) {
-          case 'daily': {
-            const diffDays = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-            occurs = diffDays >= 0
-            break
-          }
-          case 'weekly': {
-            const diffDays = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-            occurs = diffDays >= 0 && diffDays % 7 === 0
-            break
-          }
-          case 'monthly': {
-            if (targetD === startD) {
-              const diffMonths = (targetY - startY) * 12 + (targetM - startM)
-              occurs = diffMonths >= 0
-            }
-            break
-          }
-          case 'yearly': {
-            occurs = targetM === startM && targetD === startD && targetY >= startY
-            break
-          }
-          default:
-            occurs = false
-        }
-
-        if (!occurs) continue
-
-        const key = `${rec.id}|${iso}`
-        if (existingRecurringSet.has(key)) continue
-
-        if (rec.type === 'income') {
-          recurringIncomeMissing += rec.amount
-        } else {
-          recurringExpenseMissing += rec.amount
-        }
-      }
-    })
-
+function normalizeBudget(budget: Budget | undefined): Budget | undefined {
+  if (!budget) return undefined
   return {
-    recurringIncomeMissing,
-    recurringExpenseMissing,
+    ...budget,
+    basePolicy: budget.basePolicy ?? 'fixed',
+    baseFixed: budget.baseFixed ?? budget.limit,
+    savingsRate: budget.savingsRate ?? 0.3,
+    carryOverMode: budget.carryOverMode ?? 'daily_simple',
   }
+}
+
+function sumExpensesByDate(transactions: Transaction[], status: 'confirmed' | 'planned', maxDate: string): number {
+  return transactions
+    .filter((tx) => tx.type === 'expense' && tx.status === status && tx.date <= maxDate)
+    .reduce((sum, tx) => sum + tx.amount, 0)
 }
 
 export function getDashboardSummary(
   transactions: Transaction[],
   recurringTransactions: RecurringTransaction[],
-  budgetLimit: number,
+  budget: Budget | undefined,
   now = new Date(),
 ): DashboardSummary {
   const month = getMonthKey(now)
-  const monthTransactions = transactions.filter((tx) => tx.date.startsWith(month))
-
-  const totalReceitaReal = monthTransactions
-    .filter((tx) => tx.type === 'income')
-    .reduce((sum, tx) => sum + tx.amount, 0)
-
-  const totalDespesasReal = monthTransactions
-    .filter((tx) => tx.type === 'expense')
-    .reduce((sum, tx) => sum + tx.amount, 0)
-
-  const saldoReal = totalReceitaReal - totalDespesasReal
-
-  const { recurringIncomeMissing, recurringExpenseMissing } = getRecurringProjectionForMonth(
-    recurringTransactions,
-    transactions,
-    now,
-  )
-
-  const totalReceita = totalReceitaReal + recurringIncomeMissing
-  const totalDespesas = totalDespesasReal + recurringExpenseMissing
-  const saldo = totalReceita - totalDespesas
-
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const diasRestantes = Math.max(0, lastDay - now.getDate())
-
-  const saldoDisponivel = calcSaldoDisponivel(saldo, 0.3)
-  const limiteDiarioBase = calcLimiteDiarioBase(saldoDisponivel, diasRestantes)
-  const orcamentoDiario = limiteDiarioBase
-
-  let status: DashboardSummary['status'] = 'OK'
-
-  if (saldo <= 0) {
-    status = 'PERIGO'
-  } else if (orcamentoDiario < (budgetLimit ?? 0) * 0.15 || totalDespesas / (budgetLimit || 1) >= 0.8) {
-    status = 'ALERTA'
-  }
-
-  // Daily fields based on selected date (now)
   const todayISO = toLocalISODate(now)
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
   const yesterdayISO = toLocalISODate(yesterday)
 
-  const gastoHoje = transactions
-    .filter((tx) => tx.date === todayISO && tx.type === 'expense')
+  const monthTransactions = transactions.filter((tx) => tx.date.startsWith(month)).filter(isActive)
+
+  const totals = calcMonthlyTotals(transactions, month)
+
+  const projections = projectRecurrencesForMonth(recurringTransactions, monthTransactions, now)
+  const projectedIncome = projections.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
+  const projectedExpense = projections.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0)
+
+  const receitaPrevista = totals.receitaPrevista + projectedIncome
+  const despesaPrevista = totals.despesaPrevista + projectedExpense
+  const saldoPrevisto = receitaPrevista - despesaPrevista
+  const saldoReal = totals.receitaReal - totals.despesaReal
+
+  const normalizedBudget = normalizeBudget(budget)
+  const baseMensalBruta = calcBaseMensalBruta(normalizedBudget, receitaPrevista)
+  const baseMensal = calcBaseMensal(normalizedBudget, receitaPrevista)
+  const savingsRate = Math.min(1, Math.max(0, normalizedBudget?.savingsRate ?? 0))
+  const reservaInvestimento = baseMensalBruta * savingsRate
+
+  const despesasConfirmadas = monthTransactions.filter((tx) => tx.type === 'expense' && isConfirmed(tx))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
-  const gastoOntem = transactions
-    .filter((tx) => tx.date === yesterdayISO && tx.type === 'expense')
+  const despesasPlanejadasAteHoje = sumExpensesByDate(monthTransactions, 'planned', todayISO)
+  const despesasProjetadasAteHoje = projections
+    .filter((item) => item.type === 'expense' && item.date <= todayISO)
+    .reduce((sum, item) => sum + item.amount, 0)
+
+  const despesasConsumidas = despesasConfirmadas + despesasPlanejadasAteHoje + despesasProjetadasAteHoje
+
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const diasRestantes = Math.max(0, lastDay - now.getDate() + 1)
+
+  const gastoHoje = monthTransactions
+    .filter((tx) => tx.date === todayISO && tx.type === 'expense' && isConfirmed(tx))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
-  const diferencaOntem = limiteDiarioBase - gastoOntem
-  const orcamentoHoje = saldo <= 0 ? 0 : calcLimiteHoje(limiteDiarioBase, diferencaOntem)
-  const diferencaHoje = orcamentoHoje - gastoHoje
-  const statusHoje: DashboardSummary['statusHoje'] = gastoHoje <= orcamentoHoje ? 'OK' : 'ESTOURO'
+  const gastoOntem = monthTransactions
+    .filter((tx) => tx.date === yesterdayISO && tx.type === 'expense' && isConfirmed(tx))
+    .reduce((sum, tx) => sum + tx.amount, 0)
+
+  const daily = calcDailyBudget({
+    baseMensal,
+    despesasConsumidas,
+    diasRestantes,
+    gastoHoje,
+    gastoOntem,
+    carryOverMode: normalizedBudget?.carryOverMode ?? 'daily_simple',
+  })
+
+  const statusMes = calcMonthStatus({
+    saldoPrevisto,
+    baseMensal,
+    baseRestante: daily.baseRestante,
+    receitaPrevista,
+    despesaPrevista,
+  })
 
   return {
-    totalReceitaReal,
-    totalDespesasReal,
+    month,
+    receitaReal: totals.receitaReal,
+    despesaReal: totals.despesaReal,
+    receitaPrevista,
+    despesaPrevista,
     saldoReal,
-    recorrenciaReceita: recurringIncomeMissing,
-    recorrenciaDespesas: recurringExpenseMissing,
-    totalReceita,
-    totalDespesas,
-    saldo,
+    saldoPrevisto,
+    savingsRate,
+    baseMensalBruta,
+    reservaInvestimento,
+    baseMensal,
+    baseRestante: daily.baseRestante,
     diasRestantes,
-    orcamentoDiario,
-    status,
+    orcamentoDiario: daily.orcamentoDiario,
+    orcamentoHoje: daily.orcamentoHoje,
     gastoHoje,
-    orcamentoHoje,
-    diferencaHoje,
-    diferencaOntem,
-    statusHoje,
+    gastoOntem,
+    diferencaOntem: daily.diferencaOntem,
+    diferencaHoje: daily.diferencaHoje,
+    statusDia: daily.statusDia,
+    statusMes,
   }
 }
 
@@ -232,5 +160,4 @@ export function getCategorySummary(transactions: Transaction[], month: string): 
     .map(([categoria, total]) => ({ categoria, total }))
     .sort((a, b) => b.total - a.total)
 }
-
 
